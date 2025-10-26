@@ -1,6 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Sparkles } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Sparkles, ExternalLink } from "lucide-react";
 
 interface Recommendation {
   car: {
@@ -37,13 +38,18 @@ const RecommendationResults = ({ recommendations }: Props) => {
             className="overflow-hidden hover:shadow-xl transition-shadow"
           >
             {rec.car.image_url && (
-              <div className="w-full h-48 overflow-hidden">
+              <a 
+                href={`https://www.zigwheels.com/search/?q=${encodeURIComponent(rec.car.name)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full h-64 overflow-hidden hover:opacity-90 transition-opacity"
+              >
                 <img 
                   src={rec.car.image_url} 
                   alt={`${rec.car.brand} ${rec.car.name}`}
                   className="w-full h-full object-cover"
                 />
-              </div>
+              </a>
             )}
             <CardHeader className="bg-gradient-to-br from-primary/5 to-accent/5">
               <div className="flex items-start justify-between">
@@ -92,6 +98,24 @@ const RecommendationResults = ({ recommendations }: Props) => {
                   AI Recommendation
                 </p>
                 <p className="text-sm leading-relaxed">{rec.explanation}</p>
+              </div>
+
+              <div className="mt-4">
+                <Button
+                  asChild
+                  variant="outline"
+                  className="w-full"
+                >
+                  <a
+                    href={`https://www.zigwheels.com/search/?q=${encodeURIComponent(rec.car.name)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2"
+                  >
+                    View on ZigWheels
+                    <ExternalLink className="w-4 h-4" />
+                  </a>
+                </Button>
               </div>
             </CardContent>
           </Card>
