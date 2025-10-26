@@ -14,7 +14,123 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      cars: {
+        Row: {
+          brand: string
+          created_at: string | null
+          description: string | null
+          embedding: string | null
+          features: string[] | null
+          fuel_type: string
+          id: string
+          image_url: string | null
+          mileage_kmpl: number | null
+          name: string
+          price_lakhs: number
+          type: string
+        }
+        Insert: {
+          brand: string
+          created_at?: string | null
+          description?: string | null
+          embedding?: string | null
+          features?: string[] | null
+          fuel_type: string
+          id?: string
+          image_url?: string | null
+          mileage_kmpl?: number | null
+          name: string
+          price_lakhs: number
+          type: string
+        }
+        Update: {
+          brand?: string
+          created_at?: string | null
+          description?: string | null
+          embedding?: string | null
+          features?: string[] | null
+          fuel_type?: string
+          id?: string
+          image_url?: string | null
+          mileage_kmpl?: number | null
+          name?: string
+          price_lakhs?: number
+          type?: string
+        }
+        Relationships: []
+      }
+      recommendations: {
+        Row: {
+          ai_explanation: string
+          car_id: string | null
+          created_at: string | null
+          id: string
+          rank: number
+          search_id: string | null
+        }
+        Insert: {
+          ai_explanation: string
+          car_id?: string | null
+          created_at?: string | null
+          id?: string
+          rank: number
+          search_id?: string | null
+        }
+        Update: {
+          ai_explanation?: string
+          car_id?: string | null
+          created_at?: string | null
+          id?: string
+          rank?: number
+          search_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recommendations_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recommendations_search_id_fkey"
+            columns: ["search_id"]
+            isOneToOne: false
+            referencedRelation: "searches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      searches: {
+        Row: {
+          car_type: string | null
+          created_at: string | null
+          fuel_type: string | null
+          id: string
+          mileage_preference: string | null
+          price_range: string | null
+          user_query: string
+        }
+        Insert: {
+          car_type?: string | null
+          created_at?: string | null
+          fuel_type?: string | null
+          id?: string
+          mileage_preference?: string | null
+          price_range?: string | null
+          user_query: string
+        }
+        Update: {
+          car_type?: string | null
+          created_at?: string | null
+          fuel_type?: string | null
+          id?: string
+          mileage_preference?: string | null
+          price_range?: string | null
+          user_query?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

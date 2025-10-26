@@ -162,7 +162,8 @@ Respond in this exact JSON format:
           price_lakhs: car.price_lakhs,
           mileage_kmpl: car.mileage_kmpl,
           description: car.description,
-          features: car.features
+          features: car.features,
+          image_url: car.image_url
         },
         explanation: rec.explanation
       };
