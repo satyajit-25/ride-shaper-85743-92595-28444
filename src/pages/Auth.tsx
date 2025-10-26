@@ -7,29 +7,90 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, Mail } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { z } from "zod";
+import { Separator } from "@/components/ui/separator";
 
 const authSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+const signUpSchema = authSchema.extend({
+  fullName: z.string().min(2, "Full name must be at least 2 characters"),
+});
+
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
+  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/home`,
+        },
+      });
+
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to sign in with Google",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth`,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Email Sent",
+        description: "Check your email for the password reset link",
+      });
+      setShowForgotPassword(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send reset email",
+        variant: "destructive",
+      });
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validate inputs
     try {
-      authSchema.parse({ email, password });
+      if (isSignUp) {
+        signUpSchema.parse({ fullName, email, password });
+      } else {
+        authSchema.parse({ email, password });
+      }
     } catch (error) {
       if (error instanceof z.ZodError) {
         toast({
@@ -51,6 +112,9 @@ const Auth = () => {
           password,
           options: {
             emailRedirectTo: redirectUrl,
+            data: {
+              full_name: fullName,
+            },
           },
         });
 
@@ -58,11 +122,12 @@ const Auth = () => {
 
         toast({
           title: "Success!",
-          description: "Account created successfully. You can now sign in.",
+          description: "Account created successfully. Please sign in.",
         });
         
-        // Auto sign in after signup
-        navigate("/home");
+        // Switch to sign-in mode instead of auto-login
+        setIsSignUp(false);
+        setPassword("");
       } else {
         const { error } = await supabase.auth.signInWithPassword({
           email,
@@ -159,6 +224,21 @@ const Auth = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {isSignUp && (
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Full Name</Label>
+                  <Input
+                    id="fullName"
+                    type="text"
+                    placeholder="John Doe"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    disabled={loading}
+                  />
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -173,15 +253,27 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  {!isSignUp && !showForgotPassword && (
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPassword(true)}
+                      className="text-xs text-primary hover:underline"
+                      disabled={loading}
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="password"
                   type="password"
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={loading}
+                  required={!showForgotPassword}
+                  disabled={loading || showForgotPassword}
                   minLength={6}
                 />
                 {isSignUp && (
@@ -191,24 +283,70 @@ const Auth = () => {
                 )}
               </div>
 
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSignUp ? "Create Account" : "Sign In"}
-              </Button>
+              {showForgotPassword ? (
+                <div className="space-y-2">
+                  <Button 
+                    type="button" 
+                    onClick={handleForgotPassword} 
+                    className="w-full"
+                  >
+                    Send Reset Link
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => setShowForgotPassword(false)}
+                    className="w-full"
+                  >
+                    Back to Sign In
+                  </Button>
+                </div>
+              ) : (
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {isSignUp ? "Create Account" : "Sign In"}
+                </Button>
+              )}
             </form>
 
-            <div className="mt-4 text-center text-sm">
-              <button
-                type="button"
-                onClick={() => setIsSignUp(!isSignUp)}
-                className="text-primary hover:underline"
-                disabled={loading}
-              >
-                {isSignUp
-                  ? "Already have an account? Sign in"
-                  : "Don't have an account? Sign up"}
-              </button>
-            </div>
+            {!showForgotPassword && (
+              <>
+                <div className="relative my-4">
+                  <Separator />
+                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
+                    OR
+                  </span>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={handleGoogleSignIn}
+                  disabled={loading}
+                >
+                  <Mail className="mr-2 h-4 w-4" />
+                  Continue with Google
+                </Button>
+
+                <div className="mt-4 text-center text-sm">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSignUp(!isSignUp);
+                      setFullName("");
+                      setPassword("");
+                    }}
+                    className="text-primary hover:underline"
+                    disabled={loading}
+                  >
+                    {isSignUp
+                      ? "Already have an account? Sign in"
+                      : "Don't have an account? Sign up"}
+                  </button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
       </motion.div>
