@@ -7,6 +7,26 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+interface Car {
+  id: string;
+  name: string;
+  brand: string;
+  type: string;
+  fuel_type: string;
+  price_lakhs: string;
+  mileage_kmpl: string;
+  description: string;
+  features?: string[];
+  image_url?: string;
+  similarity_score?: number;
+}
+
+interface AIRecommendation {
+  car_name: string;
+  rank: number;
+  explanation: string;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -43,7 +63,11 @@ serve(async (req) => {
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+      console.error('API key not configured');
+      return new Response(
+        JSON.stringify({ error: 'Service configuration error' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Step 1: Get all cars from database
@@ -53,13 +77,16 @@ serve(async (req) => {
 
     if (carsError) {
       console.error('Database error:', carsError);
-      throw carsError;
+      return new Response(
+        JSON.stringify({ error: 'Unable to retrieve car data' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     console.log(`Found ${allCars.length} cars in database`);
 
     // Step 2: Calculate similarity scores and filter
-    const carsWithScores = allCars.map(car => {
+    const carsWithScores = allCars.map((car: Car) => {
       // Simple text-based matching score
       let score = 0;
       const carText = `${car.name} ${car.type} ${car.fuel_type} ${car.description} ${car.features?.join(' ')}`.toLowerCase();
@@ -80,10 +107,10 @@ serve(async (req) => {
 
     // Get top 5 matches
     const top5Cars = carsWithScores
-      .sort((a, b) => b.similarity_score - a.similarity_score)
+      .sort((a: Car, b: Car) => (b.similarity_score ?? 0) - (a.similarity_score ?? 0))
       .slice(0, 5);
 
-    console.log('Top 5 cars:', top5Cars.map(c => ({ name: c.name, score: c.similarity_score })));
+    console.log('Top 5 cars:', top5Cars.map((c: Car) => ({ name: c.name, score: c.similarity_score })));
 
     // Step 3: Use AI to reason and select top 4
     console.log('Asking AI to select top 4 cars...');
@@ -91,7 +118,7 @@ serve(async (req) => {
 
 Here are the top 5 matching cars:
 
-${top5Cars.map((car, i) => `
+${top5Cars.map((car: Car, i: number) => `
 ${i + 1}. ${car.name} (${car.brand})
    - Type: ${car.type}
    - Fuel: ${car.fuel_type}
@@ -147,8 +174,11 @@ Respond in this exact JSON format:
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error('AI API error:', errorText);
-      throw new Error('Failed to get AI recommendations');
+      console.error('AI API error:', aiResponse.status, errorText);
+      return new Response(
+        JSON.stringify({ error: 'Unable to generate recommendations' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     const aiData = await aiResponse.json();
@@ -156,33 +186,36 @@ Respond in this exact JSON format:
     console.log('AI response:', aiContent);
 
     // Parse AI response
-    let aiRecommendations;
+    let aiRecommendations: { recommendations: AIRecommendation[] };
     try {
       // Try to extract JSON from markdown code blocks if present
       const jsonMatch = aiContent.match(/```json\n([\s\S]*?)\n```/) || aiContent.match(/```\n([\s\S]*?)\n```/);
       const jsonStr = jsonMatch ? jsonMatch[1] : aiContent;
       aiRecommendations = JSON.parse(jsonStr);
     } catch (parseError) {
-      console.error('Failed to parse AI response:', aiContent);
-      throw new Error('Failed to parse AI recommendations');
+      console.error('Failed to parse AI response');
+      return new Response(
+        JSON.stringify({ error: 'Unable to process recommendations' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Step 4: Build final response with full car details
-    const finalRecommendations = aiRecommendations.recommendations.map((rec: any) => {
-      const car = top5Cars.find(c => c.name === rec.car_name);
+    const finalRecommendations = aiRecommendations.recommendations.map((rec: AIRecommendation) => {
+      const car = top5Cars.find((c: Car) => c.name === rec.car_name);
       return {
         rank: rec.rank,
         car: {
-          id: car.id,
-          name: car.name,
-          brand: car.brand,
-          type: car.type,
-          fuel_type: car.fuel_type,
-          price_lakhs: car.price_lakhs,
-          mileage_kmpl: car.mileage_kmpl,
-          description: car.description,
-          features: car.features,
-          image_url: car.image_url
+          id: car?.id,
+          name: car?.name,
+          brand: car?.brand,
+          type: car?.type,
+          fuel_type: car?.fuel_type,
+          price_lakhs: car?.price_lakhs,
+          mileage_kmpl: car?.mileage_kmpl,
+          description: car?.description,
+          features: car?.features,
+          image_url: car?.image_url
         },
         explanation: rec.explanation
       };
@@ -203,9 +236,9 @@ Respond in this exact JSON format:
       .single();
 
     if (searchError) {
-      console.error('Failed to save search:', searchError);
+      console.error('Failed to save search');
     } else {
-      console.log('Saved search with ID:', searchData.id);
+      console.log('Saved search');
 
       // Save recommendations
       for (const rec of finalRecommendations) {
@@ -221,7 +254,7 @@ Respond in this exact JSON format:
       }
     }
 
-    console.log('Returning recommendations:', finalRecommendations);
+    console.log('Returning recommendations');
 
     return new Response(
       JSON.stringify({ recommendations: finalRecommendations }),

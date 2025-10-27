@@ -26,9 +26,10 @@ const SearchHistory = () => {
   const fetchSearches = async () => {
     if (!user) return;
 
-    const { data, error } = await (supabase as any)
+    const { data, error } = await supabase
       .from("searches")
       .select("*")
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .limit(5);
 
@@ -41,10 +42,11 @@ const SearchHistory = () => {
   };
 
   const handleDelete = async (id: string) => {
-    const { error } = await (supabase as any)
+    const { error } = await supabase
       .from("searches")
       .delete()
-      .eq("id", id);
+      .eq("id", id)
+      .eq("user_id", user?.id);
 
     if (error) {
       toast({
