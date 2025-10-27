@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { History, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Search {
   id: string;
@@ -14,12 +15,17 @@ interface Search {
 const SearchHistory = () => {
   const [searches, setSearches] = useState<Search[]>([]);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => {
-    fetchSearches();
-  }, []);
+    if (user) {
+      fetchSearches();
+    }
+  }, [user]);
 
   const fetchSearches = async () => {
+    if (!user) return;
+
     const { data, error } = await (supabase as any)
       .from("searches")
       .select("*")

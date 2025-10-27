@@ -13,14 +13,33 @@ serve(async (req) => {
   }
 
   try {
-    const { userQuery, fuelType, priceRange, carType, mileagePreference } = await req.json();
-    
-    console.log('Received request:', { userQuery, fuelType, priceRange, carType, mileagePreference });
+    // Get user from Authorization header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      { global: { headers: { Authorization: authHeader } } }
     );
+
+    // Verify authentication
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Authentication required' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { userQuery, fuelType, priceRange, carType, mileagePreference } = await req.json();
+    
+    console.log('Received request from user:', user.id);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -173,6 +192,7 @@ Respond in this exact JSON format:
     const { data: searchData, error: searchError } = await supabaseClient
       .from('searches')
       .insert({
+        user_id: user.id,
         user_query: userQuery,
         fuel_type: fuelType,
         price_range: priceRange,
@@ -192,6 +212,7 @@ Respond in this exact JSON format:
         await supabaseClient
           .from('recommendations')
           .insert({
+            user_id: user.id,
             search_id: searchData.id,
             car_id: rec.car.id,
             rank: rec.rank,
@@ -208,9 +229,9 @@ Respond in this exact JSON format:
     );
 
   } catch (error: any) {
-    console.error('Error in recommend-cars function:', error);
+    console.error('Error details:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: 'Unable to process recommendation request' }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
