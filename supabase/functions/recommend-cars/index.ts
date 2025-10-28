@@ -130,26 +130,28 @@ ${i + 1}. ${car.name} (${car.brand})
 
 Please select the TOP 4 BEST cars for this customer and explain WHY each car is a great match for their needs. Be specific about how each car matches their requirements.
 
+IMPORTANT: Use ONLY the car name (without the brand in parentheses) in your response. For example, if you see "Verna Diesel (Hyundai)", use only "Verna Diesel" as the car_name.
+
 Respond in this exact JSON format:
 {
   "recommendations": [
     {
-      "car_name": "exact car name from list",
+      "car_name": "exact car name from list (WITHOUT brand in parentheses)",
       "rank": 1,
       "explanation": "detailed explanation of why this car is perfect for the customer"
     },
     {
-      "car_name": "exact car name from list",
+      "car_name": "exact car name from list (WITHOUT brand in parentheses)",
       "rank": 2,
       "explanation": "detailed explanation of why this car is perfect for the customer"
     },
     {
-      "car_name": "exact car name from list",
+      "car_name": "exact car name from list (WITHOUT brand in parentheses)",
       "rank": 3,
       "explanation": "detailed explanation of why this car is perfect for the customer"
     },
     {
-      "car_name": "exact car name from list",
+      "car_name": "exact car name from list (WITHOUT brand in parentheses)",
       "rank": 4,
       "explanation": "detailed explanation of why this car is perfect for the customer"
     }
@@ -201,25 +203,44 @@ Respond in this exact JSON format:
     }
 
     // Step 4: Build final response with full car details
-    const finalRecommendations = aiRecommendations.recommendations.map((rec: AIRecommendation) => {
-      const car = top5Cars.find((c: Car) => c.name === rec.car_name);
-      return {
-        rank: rec.rank,
-        car: {
-          id: car?.id,
-          name: car?.name,
-          brand: car?.brand,
-          type: car?.type,
-          fuel_type: car?.fuel_type,
-          price_lakhs: car?.price_lakhs,
-          mileage_kmpl: car?.mileage_kmpl,
-          description: car?.description,
-          features: car?.features,
-          image_url: car?.image_url
-        },
-        explanation: rec.explanation
-      };
-    });
+    const finalRecommendations = aiRecommendations.recommendations
+      .map((rec: AIRecommendation) => {
+        // Remove brand suffix from AI response (e.g., "Verna Diesel (Hyundai)" -> "Verna Diesel")
+        const cleanCarName = rec.car_name.replace(/\s*\([^)]*\)\s*$/, '').trim();
+        
+        // Try exact match first, then fuzzy match
+        let car = top5Cars.find((c: Car) => c.name === cleanCarName);
+        if (!car) {
+          // Try matching by checking if the car name contains the cleaned name or vice versa
+          car = top5Cars.find((c: Car) => 
+            c.name.toLowerCase().includes(cleanCarName.toLowerCase()) ||
+            cleanCarName.toLowerCase().includes(c.name.toLowerCase())
+          );
+        }
+        
+        if (!car) {
+          console.error(`Could not find car matching: ${rec.car_name} (cleaned: ${cleanCarName})`);
+          return null;
+        }
+        
+        return {
+          rank: rec.rank,
+          car: {
+            id: car.id,
+            name: car.name,
+            brand: car.brand,
+            type: car.type,
+            fuel_type: car.fuel_type,
+            price_lakhs: car.price_lakhs,
+            mileage_kmpl: car.mileage_kmpl,
+            description: car.description,
+            features: car.features,
+            image_url: car.image_url
+          },
+          explanation: rec.explanation
+        };
+      })
+      .filter((rec): rec is NonNullable<typeof rec> => rec !== null);
 
     // Step 5: Save search to database
     const { data: searchData, error: searchError } = await supabaseClient
@@ -237,8 +258,8 @@ Respond in this exact JSON format:
 
     if (searchError) {
       console.error('Failed to save search');
-    } else {
-      console.log('Saved search');
+    } else if (finalRecommendations.length > 0) {
+      console.log('Saved search with ID:', searchData.id);
 
       // Save recommendations
       for (const rec of finalRecommendations) {
@@ -254,7 +275,7 @@ Respond in this exact JSON format:
       }
     }
 
-    console.log('Returning recommendations');
+    console.log('Returning recommendations:', finalRecommendations);
 
     return new Response(
       JSON.stringify({ recommendations: finalRecommendations }),
