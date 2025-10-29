@@ -1,6 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { z } from 'https://deno.land/x/zod@v3.22.4/mod.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -57,7 +58,29 @@ serve(async (req) => {
       );
     }
 
-    const { userQuery, fuelType, priceRange, carType, mileagePreference } = await req.json();
+    const requestBody = await req.json();
+    
+    // Validate input with Zod schema
+    const requestSchema = z.object({
+      userQuery: z.string().min(1, 'Query required').max(500, 'Query too long'),
+      fuelType: z.enum(['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG', '']).default(''),
+      priceRange: z.string().regex(/^\d*$/, 'Price must be numeric').max(10).default(''),
+      carType: z.enum(['SUV', 'Sedan', 'Hatchback', 'MPV', '']).default(''),
+      mileagePreference: z.enum(['excellent', 'good', 'average', '']).default('')
+    });
+
+    let validatedData;
+    try {
+      validatedData = requestSchema.parse(requestBody);
+    } catch (validationError) {
+      console.error('Validation error:', validationError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid input parameters' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const { userQuery, fuelType, priceRange, carType, mileagePreference } = validatedData;
     
     console.log('Received request from user:', user.id);
 
