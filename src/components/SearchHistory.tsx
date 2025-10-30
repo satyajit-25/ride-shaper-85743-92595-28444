@@ -11,9 +11,17 @@ interface Search {
   id: string;
   user_query: string;
   created_at: string;
+  fuel_type: string | null;
+  price_range: string | null;
+  car_type: string | null;
+  mileage_preference: string | null;
 }
 
-const SearchHistory = () => {
+interface Props {
+  onSearchClick?: (search: Search) => void;
+}
+
+const SearchHistory = ({ onSearchClick }: Props) => {
   const [searches, setSearches] = useState<Search[]>([]);
   const { toast } = useToast();
   const { user } = useAuth();
@@ -83,10 +91,15 @@ const SearchHistory = () => {
           {searches.map((search) => (
             <div
               key={search.id}
-              className="flex items-start justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
+              className="flex items-start justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors group"
             >
-              <div className="flex-1">
-                <p className="text-sm font-medium">{search.user_query}</p>
+              <div 
+                className="flex-1 cursor-pointer"
+                onClick={() => onSearchClick?.(search)}
+              >
+                <p className="text-sm font-medium group-hover:text-primary transition-colors">
+                  {search.user_query}
+                </p>
                 <div className="flex items-center gap-2 mt-1.5">
                   <Clock className="w-3 h-3 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">
@@ -101,7 +114,10 @@ const SearchHistory = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => handleDelete(search.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete(search.id);
+                }}
                 className="text-muted-foreground hover:text-destructive"
               >
                 <Trash2 className="w-4 h-4" />

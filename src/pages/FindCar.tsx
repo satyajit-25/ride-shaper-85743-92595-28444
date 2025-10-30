@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import CarRecommendationForm from "@/components/CarRecommendationForm";
+import CarRecommendationForm, { FormHandle } from "@/components/CarRecommendationForm";
 import VoiceInput from "@/components/VoiceInput";
 import RecommendationResults from "@/components/RecommendationResults";
 import SearchHistory from "@/components/SearchHistory";
@@ -18,12 +18,32 @@ const FindCar = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [refreshHistory, setRefreshHistory] = useState(0);
+  const [activeTab, setActiveTab] = useState("form");
   const navigate = useNavigate();
   const { toast } = useToast();
+  const formRef = useRef<FormHandle>(null);
 
   const handleRecommendations = (recs: any[]) => {
     setRecommendations(recs);
     setRefreshHistory(prev => prev + 1);
+  };
+
+  const handleSearchClick = (search: any) => {
+    if (search.fuel_type && search.price_range && search.car_type && search.mileage_preference) {
+      formRef.current?.setFormValues({
+        fuelType: search.fuel_type,
+        priceRange: search.price_range,
+        carType: search.car_type,
+        mileagePreference: search.mileage_preference,
+      });
+      setActiveTab("form");
+      // Scroll to form
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      toast({
+        title: "Search loaded",
+        description: "Your previous search has been loaded into the form",
+      });
+    }
   };
 
   const handleSignOut = async () => {
@@ -125,7 +145,7 @@ const FindCar = () => {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             <Card className="p-8 bg-card/50 border backdrop-blur-sm">
-              <Tabs defaultValue="form" className="w-full">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 mb-8">
                   <TabsTrigger value="form">
                     Form Input
@@ -137,6 +157,7 @@ const FindCar = () => {
 
                 <TabsContent value="form">
                   <CarRecommendationForm 
+                    ref={formRef}
                     onRecommendations={handleRecommendations}
                     setIsLoading={setIsLoading}
                   />
@@ -189,7 +210,10 @@ const FindCar = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               className="mt-16"
             >
-              <SearchHistory key={refreshHistory} />
+              <SearchHistory 
+                key={refreshHistory} 
+                onSearchClick={handleSearchClick}
+              />
             </motion.div>
           )}
         </div>

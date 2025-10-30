@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useImperativeHandle, forwardRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,9 +22,13 @@ interface Props {
   setIsLoading: (loading: boolean) => void;
 }
 
+export interface FormHandle {
+  setFormValues: (values: Partial<FormData>) => void;
+}
+
 type FormData = z.infer<typeof formSchema>;
 
-const CarRecommendationForm = ({ onRecommendations, setIsLoading }: Props) => {
+const CarRecommendationForm = forwardRef<FormHandle, Props>(({ onRecommendations, setIsLoading }, ref) => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -37,6 +41,12 @@ const CarRecommendationForm = ({ onRecommendations, setIsLoading }: Props) => {
       mileagePreference: "",
     },
   });
+
+  useImperativeHandle(ref, () => ({
+    setFormValues: (values: Partial<FormData>) => {
+      form.reset(values);
+    },
+  }));
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
@@ -181,6 +191,8 @@ const CarRecommendationForm = ({ onRecommendations, setIsLoading }: Props) => {
       </form>
     </Form>
   );
-};
+});
+
+CarRecommendationForm.displayName = 'CarRecommendationForm';
 
 export default CarRecommendationForm;
