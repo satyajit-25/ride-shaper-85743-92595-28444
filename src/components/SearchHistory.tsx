@@ -2,9 +2,10 @@ import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { History, Trash2 } from "lucide-react";
+import { History, Trash2, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { format, formatDistanceToNow } from "date-fns";
 
 interface Search {
   id: string;
@@ -82,13 +83,20 @@ const SearchHistory = () => {
           {searches.map((search) => (
             <div
               key={search.id}
-              className="flex items-start justify-between p-3 bg-muted/50 rounded-lg"
+              className="flex items-start justify-between p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors"
             >
               <div className="flex-1">
                 <p className="text-sm font-medium">{search.user_query}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(search.created_at).toLocaleDateString()}
-                </p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <Clock className="w-3 h-3 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(search.created_at), "MMM d, yyyy 'at' h:mm a")}
+                  </p>
+                  <span className="text-xs text-muted-foreground">•</span>
+                  <p className="text-xs text-muted-foreground">
+                    {formatDistanceToNow(new Date(search.created_at), { addSuffix: true })}
+                  </p>
+                </div>
               </div>
               <Button
                 variant="ghost"
