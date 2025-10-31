@@ -62,29 +62,29 @@ export type Database = {
       recommendations: {
         Row: {
           ai_explanation: string
-          car_id: string | null
+          car_id: string
           created_at: string | null
           id: string
           rank: number
-          search_id: string | null
+          search_id: string
           user_id: string
         }
         Insert: {
           ai_explanation: string
-          car_id?: string | null
+          car_id: string
           created_at?: string | null
           id?: string
           rank: number
-          search_id?: string | null
+          search_id: string
           user_id: string
         }
         Update: {
           ai_explanation?: string
-          car_id?: string | null
+          car_id?: string
           created_at?: string | null
           id?: string
           rank?: number
-          search_id?: string | null
+          search_id?: string
           user_id?: string
         }
         Relationships: [

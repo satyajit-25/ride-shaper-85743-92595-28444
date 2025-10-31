@@ -64,7 +64,14 @@ serve(async (req) => {
     const requestSchema = z.object({
       userQuery: z.string().min(1, 'Query required').max(500, 'Query too long'),
       fuelType: z.enum(['Petrol', 'Diesel', 'Electric', 'Hybrid', 'CNG', '']).default(''),
-      priceRange: z.string().regex(/^\d*$/, 'Price must be numeric').max(10).default(''),
+      priceRange: z.string()
+        .regex(/^\d*$/, 'Price must be numeric')
+        .default('')
+        .refine((val) => {
+          if (val === '') return true;
+          const num = parseInt(val, 10);
+          return !isNaN(num) && num >= 0 && num <= 500;
+        }, 'Price must be between 0 and 500 lakhs'),
       carType: z.enum(['SUV', 'Sedan', 'Hatchback', 'MPV', '']).default(''),
       mileagePreference: z.enum(['excellent', 'good', 'average', '']).default('')
     });
