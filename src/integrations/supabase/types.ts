@@ -67,7 +67,7 @@ export type Database = {
           id: string
           rank: number
           search_id: string | null
-          user_id: string | null
+          user_id: string
         }
         Insert: {
           ai_explanation: string
@@ -76,7 +76,7 @@ export type Database = {
           id?: string
           rank: number
           search_id?: string | null
-          user_id?: string | null
+          user_id: string
         }
         Update: {
           ai_explanation?: string
@@ -85,7 +85,7 @@ export type Database = {
           id?: string
           rank?: number
           search_id?: string | null
-          user_id?: string | null
+          user_id?: string
         }
         Relationships: [
           {
@@ -112,7 +112,7 @@ export type Database = {
           id: string
           mileage_preference: string | null
           price_range: string | null
-          user_id: string | null
+          user_id: string
           user_query: string
         }
         Insert: {
@@ -122,7 +122,7 @@ export type Database = {
           id?: string
           mileage_preference?: string | null
           price_range?: string | null
-          user_id?: string | null
+          user_id: string
           user_query: string
         }
         Update: {
@@ -132,7 +132,7 @@ export type Database = {
           id?: string
           mileage_preference?: string | null
           price_range?: string | null
-          user_id?: string | null
+          user_id?: string
           user_query?: string
         }
         Relationships: []
