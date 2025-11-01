@@ -19,7 +19,6 @@ export type Database = {
           brand: string
           created_at: string | null
           description: string | null
-          embedding: string | null
           features: string[] | null
           fuel_type: string
           id: string
@@ -33,7 +32,6 @@ export type Database = {
           brand: string
           created_at?: string | null
           description?: string | null
-          embedding?: string | null
           features?: string[] | null
           fuel_type: string
           id?: string
@@ -47,7 +45,6 @@ export type Database = {
           brand?: string
           created_at?: string | null
           description?: string | null
-          embedding?: string | null
           features?: string[] | null
           fuel_type?: string
           id?: string
