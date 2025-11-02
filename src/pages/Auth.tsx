@@ -33,18 +33,37 @@ const Auth = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'google',
-        options: {
-          redirectTo: `${window.location.origin}/home`,
-        },
-      });
+      const redirectTo = `${window.location.origin}/home`;
+      const inIframe = window.self !== window.top;
 
-      if (error) throw error;
+      if (inIframe) {
+        // Running inside the Lovable preview iframe – break out to top window
+        const { data, error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: {
+            redirectTo,
+            skipBrowserRedirect: true,
+          },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          // Navigate the top-level window so Google isn't loaded inside an iframe
+          (window.top as Window).location.href = data.url;
+        } else {
+          throw new Error("Failed to start Google sign-in");
+        }
+      } else {
+        // Normal flow when not framed
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo },
+        });
+        if (error) throw error;
+      }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to sign in with Google",
+        title: "Google sign-in failed",
+        description: error?.message || "Please try again.",
         variant: "destructive",
       });
     }
