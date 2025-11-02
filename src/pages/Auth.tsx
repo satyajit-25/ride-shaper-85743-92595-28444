@@ -7,10 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Sparkles, Loader2, Mail } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { z } from "zod";
-import { Separator } from "@/components/ui/separator";
 
 const authSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -31,54 +30,6 @@ const Auth = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const redirectTo = `${window.location.origin}/home`;
-      const inIframe = window.self !== window.top;
-
-      if (inIframe) {
-        // Running inside the Lovable preview iframe – get the auth URL and escape
-        const { data, error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: {
-            redirectTo,
-            skipBrowserRedirect: true,
-          },
-        });
-        if (error) throw error;
-        const authUrl = data?.url;
-        if (!authUrl) throw new Error("Failed to start Google sign-in");
-
-        try {
-          // Preferred: navigate the top-level window
-          (window.top as Window).location.href = authUrl;
-        } catch {
-          // Fallback: open in a new tab if top navigation is blocked by sandbox
-          const popup = window.open(authUrl, "_blank", "noopener,noreferrer");
-          if (!popup) {
-            toast({
-              title: "Enable pop-ups to continue",
-              description: "Your browser blocked the sign-in window. Please allow pop-ups and try again.",
-              variant: "destructive",
-            });
-          }
-        }
-      } else {
-        // Normal flow when not framed
-        const { error } = await supabase.auth.signInWithOAuth({
-          provider: 'google',
-          options: { redirectTo },
-        });
-        if (error) throw error;
-      }
-    } catch (error: any) {
-      toast({
-        title: "Google sign-in failed",
-        description: error?.message || "Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const handleForgotPassword = async () => {
     if (!email) {
@@ -340,42 +291,22 @@ const Auth = () => {
             </form>
 
             {!showForgotPassword && (
-              <>
-                <div className="relative my-4">
-                  <Separator />
-                  <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-background px-2 text-xs text-muted-foreground">
-                    OR
-                  </span>
-                </div>
-
-                <Button
+              <div className="mt-4 text-center text-sm">
+                <button
                   type="button"
-                  variant="outline"
-                  className="w-full"
-                  onClick={handleGoogleSignIn}
+                  onClick={() => {
+                    setIsSignUp(!isSignUp);
+                    setFullName("");
+                    setPassword("");
+                  }}
+                  className="text-primary hover:underline"
                   disabled={loading}
                 >
-                  <Mail className="mr-2 h-4 w-4" />
-                  Continue with Google
-                </Button>
-
-                <div className="mt-4 text-center text-sm">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSignUp(!isSignUp);
-                      setFullName("");
-                      setPassword("");
-                    }}
-                    className="text-primary hover:underline"
-                    disabled={loading}
-                  >
-                    {isSignUp
-                      ? "Already have an account? Sign in"
-                      : "Don't have an account? Sign up"}
-                  </button>
-                </div>
-              </>
+                  {isSignUp
+                    ? "Already have an account? Sign in"
+                    : "Don't have an account? Sign up"}
+                </button>
+              </div>
             )}
           </CardContent>
         </Card>
