@@ -37,7 +37,7 @@ const Auth = () => {
       const inIframe = window.self !== window.top;
 
       if (inIframe) {
-        // Running inside the Lovable preview iframe – break out to top window
+        // Running inside the Lovable preview iframe – get the auth URL and escape
         const { data, error } = await supabase.auth.signInWithOAuth({
           provider: 'google',
           options: {
@@ -46,11 +46,22 @@ const Auth = () => {
           },
         });
         if (error) throw error;
-        if (data?.url) {
-          // Navigate the top-level window so Google isn't loaded inside an iframe
-          (window.top as Window).location.href = data.url;
-        } else {
-          throw new Error("Failed to start Google sign-in");
+        const authUrl = data?.url;
+        if (!authUrl) throw new Error("Failed to start Google sign-in");
+
+        try {
+          // Preferred: navigate the top-level window
+          (window.top as Window).location.href = authUrl;
+        } catch {
+          // Fallback: open in a new tab if top navigation is blocked by sandbox
+          const popup = window.open(authUrl, "_blank", "noopener,noreferrer");
+          if (!popup) {
+            toast({
+              title: "Enable pop-ups to continue",
+              description: "Your browser blocked the sign-in window. Please allow pop-ups and try again.",
+              variant: "destructive",
+            });
+          }
         }
       } else {
         // Normal flow when not framed
