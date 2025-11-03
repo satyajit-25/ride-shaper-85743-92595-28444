@@ -11,14 +11,19 @@ interface Props {
 }
 
 const FinancingCalculator = ({ carPrice, carName }: Props) => {
+  // Convert lakhs to actual rupees for calculations
+  const carPriceInRupees = carPrice * 100000;
   const [downPayment, setDownPayment] = useState(carPrice * 0.2);
   const [interestRate, setInterestRate] = useState(8.5);
   const [loanTenure, setLoanTenure] = useState(5);
 
-  const loanAmount = carPrice - downPayment;
+  // Calculate loan amount in rupees
+  const downPaymentInRupees = downPayment * 100000;
+  const loanAmount = carPriceInRupees - downPaymentInRupees;
   const monthlyRate = interestRate / 12 / 100;
   const numPayments = loanTenure * 12;
   
+  // EMI calculation
   const emi = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments) / 
               (Math.pow(1 + monthlyRate, numPayments) - 1);
   
@@ -85,7 +90,7 @@ const FinancingCalculator = ({ carPrice, carName }: Props) => {
           <div className="border-t pt-4 space-y-2">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Loan Amount:</span>
-              <span className="font-semibold">₹{loanAmount.toFixed(2)}L</span>
+              <span className="font-semibold">₹{(loanAmount / 100000).toFixed(2)}L</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Monthly EMI:</span>
