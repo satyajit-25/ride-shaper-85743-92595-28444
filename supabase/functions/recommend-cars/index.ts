@@ -73,7 +73,12 @@ serve(async (req) => {
           return !isNaN(num) && num >= 0 && num <= 500;
         }, 'Price must be between 0 and 500 lakhs'),
       carType: z.enum(['SUV', 'Sedan', 'Hatchback', 'MPV', '']).default(''),
-      mileagePreference: z.enum(['excellent', 'good', 'average', '']).default('')
+      mileagePreference: z.enum(['excellent', 'good', 'average', '']).default(''),
+      conversationId: z.string().optional(),
+      previousMessages: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string()
+      })).optional()
     });
 
     let validatedData;
@@ -87,9 +92,12 @@ serve(async (req) => {
       );
     }
 
-    const { userQuery, fuelType, priceRange, carType, mileagePreference } = validatedData;
+    const { userQuery, fuelType, priceRange, carType, mileagePreference, conversationId, previousMessages } = validatedData;
     
     console.log('Received request from user:', user.id);
+    
+    // Check if this is a follow-up conversation
+    const isFollowUp = conversationId && previousMessages && previousMessages.length > 0;
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -144,7 +152,37 @@ serve(async (req) => {
 
     // Step 3: Use AI to reason and select top 4
     console.log('Asking AI to select top 4 cars...');
-    const aiPrompt = `You are a car recommendation expert. Based on the user's query: "${userQuery}"
+    
+    let systemPrompt = 'You are a car recommendation expert. Always respond with valid JSON.';
+    let userPrompt = '';
+    
+    if (isFollowUp) {
+      // For follow-ups, include conversation history
+      const contextMessages = previousMessages!.map(msg => 
+        `${msg.role === 'user' ? 'Customer' : 'You'}: ${msg.content}`
+      ).join('\n\n');
+      
+      userPrompt = `Previous conversation:
+${contextMessages}
+
+Customer's new request: "${userQuery}"
+
+Here are the available cars that might match:
+
+${top5Cars.map((car: Car, i: number) => `
+${i + 1}. ${car.name} (${car.brand})
+   - Type: ${car.type}
+   - Fuel: ${car.fuel_type}
+   - Price: ₹${car.price_lakhs}L
+   - Mileage: ${car.mileage_kmpl} km/l
+   - Description: ${car.description}
+   - Features: ${car.features?.join(', ')}
+`).join('\n')}
+
+Based on the conversation context and their new request, select the TOP 4 BEST cars and explain why each matches their needs.`;
+    } else {
+      // Initial query
+      userPrompt = `Based on the user's query: "${userQuery}"
 
 Here are the top 5 matching cars:
 
@@ -158,7 +196,10 @@ ${i + 1}. ${car.name} (${car.brand})
    - Features: ${car.features?.join(', ')}
 `).join('\n')}
 
-Please select the TOP 4 BEST cars for this customer and explain WHY each car is a great match for their needs. Be specific about how each car matches their requirements.
+Please select the TOP 4 BEST cars for this customer and explain WHY each car is a great match for their needs.`;
+    }
+
+    const aiPrompt = `${userPrompt}
 
 IMPORTANT: Use ONLY the car name (without the brand in parentheses) in your response. For example, if you see "Verna Diesel (Hyundai)", use only "Verna Diesel" as the car_name.
 
@@ -185,7 +226,8 @@ Respond in this exact JSON format:
       "rank": 4,
       "explanation": "detailed explanation of why this car is perfect for the customer"
     }
-  ]
+  ],
+  "response": "A friendly message to the customer about these recommendations (1-2 sentences)"
 }`;
 
     const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -194,13 +236,12 @@ Respond in this exact JSON format:
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
+        body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: 'You are a car recommendation expert. Always respond with valid JSON.' },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: aiPrompt }
-        ],
-        temperature: 0.7,
+        ]
       }),
     });
 
@@ -218,7 +259,7 @@ Respond in this exact JSON format:
     console.log('AI response:', aiContent);
 
     // Parse AI response
-    let aiRecommendations: { recommendations: AIRecommendation[] };
+    let aiRecommendations: { recommendations: AIRecommendation[]; response?: string };
     try {
       // Try to extract JSON from markdown code blocks if present
       const jsonMatch = aiContent.match(/```json\n([\s\S]*?)\n```/) || aiContent.match(/```\n([\s\S]*?)\n```/);
@@ -272,43 +313,52 @@ Respond in this exact JSON format:
       })
       .filter((rec): rec is NonNullable<typeof rec> => rec !== null);
 
-    // Step 5: Save search to database
-    const { data: searchData, error: searchError } = await supabaseClient
-      .from('searches')
-      .insert({
-        user_id: user.id,
-        user_query: userQuery,
-        fuel_type: fuelType,
-        price_range: priceRange,
-        car_type: carType,
-        mileage_preference: mileagePreference
-      })
-      .select()
-      .single();
+    // Step 5: Save search to database (only for non-follow-up queries)
+    let searchId = conversationId;
+    
+    if (!isFollowUp) {
+      const { data: searchData, error: searchError } = await supabaseClient
+        .from('searches')
+        .insert({
+          user_id: user.id,
+          user_query: userQuery,
+          fuel_type: fuelType,
+          price_range: priceRange,
+          car_type: carType,
+          mileage_preference: mileagePreference
+        })
+        .select()
+        .single();
 
-    if (searchError) {
-      console.error('Failed to save search');
-    } else if (finalRecommendations.length > 0) {
-      console.log('Saved search with ID:', searchData.id);
+      if (searchError) {
+        console.error('Failed to save search');
+      } else if (finalRecommendations.length > 0) {
+        console.log('Saved search with ID:', searchData.id);
+        searchId = searchData.id;
 
-      // Save recommendations
-      for (const rec of finalRecommendations) {
-        await supabaseClient
-          .from('recommendations')
-          .insert({
-            user_id: user.id,
-            search_id: searchData.id,
-            car_id: rec.car.id,
-            rank: rec.rank,
-            ai_explanation: rec.explanation
-          });
+        // Save recommendations
+        for (const rec of finalRecommendations) {
+          await supabaseClient
+            .from('recommendations')
+            .insert({
+              user_id: user.id,
+              search_id: searchData.id,
+              car_id: rec.car.id,
+              rank: rec.rank,
+              ai_explanation: rec.explanation
+            });
+        }
       }
     }
 
     console.log('Returning recommendations:', finalRecommendations);
 
     return new Response(
-      JSON.stringify({ recommendations: finalRecommendations }),
+      JSON.stringify({ 
+        recommendations: finalRecommendations,
+        conversationId: searchId,
+        aiResponse: aiRecommendations.response || "Here are your perfect car matches!"
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

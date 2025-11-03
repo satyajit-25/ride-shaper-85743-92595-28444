@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import CarRecommendationForm, { FormHandle } from "@/components/CarRecommendationForm";
 import VoiceInput from "@/components/VoiceInput";
+import ConversationalInput from "@/components/ConversationalInput";
 import RecommendationResults from "@/components/RecommendationResults";
 import SearchHistory from "@/components/SearchHistory";
 import ComparisonTable from "@/components/ComparisonTable";
@@ -146,9 +147,12 @@ const FindCar = () => {
           >
             <Card className="p-8 bg-card/50 border backdrop-blur-sm">
               <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 mb-8">
+                <TabsList className="grid w-full grid-cols-3 mb-8">
                   <TabsTrigger value="form">
                     Form Input
+                  </TabsTrigger>
+                  <TabsTrigger value="conversation">
+                    Conversation
                   </TabsTrigger>
                   <TabsTrigger value="voice">
                     Voice Input
@@ -158,6 +162,13 @@ const FindCar = () => {
                 <TabsContent value="form">
                   <CarRecommendationForm 
                     ref={formRef}
+                    onRecommendations={handleRecommendations}
+                    setIsLoading={setIsLoading}
+                  />
+                </TabsContent>
+
+                <TabsContent value="conversation">
+                  <ConversationalInput 
                     onRecommendations={handleRecommendations}
                     setIsLoading={setIsLoading}
                   />

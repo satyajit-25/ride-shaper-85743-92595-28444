@@ -1,10 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sparkles, ExternalLink } from "lucide-react";
+import { Sparkles, ExternalLink, Heart } from "lucide-react";
+import { useFavorites } from "@/hooks/useFavorites";
+import { useAuth } from "@/contexts/AuthContext";
+import FinancingCalculator from "./FinancingCalculator";
+import { cn } from "@/lib/utils";
 
 interface Recommendation {
   car: {
+    id: string;
     name: string;
     brand: string;
     type: string;
@@ -24,6 +29,9 @@ interface Props {
 }
 
 const RecommendationResults = ({ recommendations }: Props) => {
+  const { user } = useAuth();
+  const { favorites, toggleFavorite, loading } = useFavorites(user?.id);
+
   return (
     <div className="mt-8 space-y-6">
       <div className="flex items-center gap-2 text-2xl font-bold">
@@ -53,11 +61,25 @@ const RecommendationResults = ({ recommendations }: Props) => {
             )}
             <CardHeader className="bg-gradient-to-br from-primary/5 to-accent/5">
               <div className="flex items-start justify-between">
-                <div>
+                <div className="flex-1">
                   <CardTitle className="text-2xl">{rec.car.name}</CardTitle>
                   <p className="text-muted-foreground">{rec.car.brand}</p>
                 </div>
-                <Badge className="text-lg">#{rec.rank}</Badge>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => toggleFavorite(rec.car.id)}
+                    disabled={loading}
+                    className={cn(
+                      "transition-colors",
+                      favorites.has(rec.car.id) && "text-red-500 hover:text-red-600"
+                    )}
+                  >
+                    <Heart className={cn("w-5 h-5", favorites.has(rec.car.id) && "fill-current")} />
+                  </Button>
+                  <Badge className="text-lg">#{rec.rank}</Badge>
+                </div>
               </div>
             </CardHeader>
             
@@ -100,7 +122,8 @@ const RecommendationResults = ({ recommendations }: Props) => {
                 <p className="text-sm leading-relaxed">{rec.explanation}</p>
               </div>
 
-              <div className="mt-4">
+              <div className="mt-4 space-y-2">
+                <FinancingCalculator carPrice={rec.car.price_lakhs} carName={rec.car.name} />
                 <Button
                   asChild
                   variant="outline"

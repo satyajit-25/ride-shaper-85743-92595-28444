@@ -56,6 +56,35 @@ export type Database = {
         }
         Relationships: []
       }
+      favorites: {
+        Row: {
+          car_id: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          car_id: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          car_id?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "favorites_car_id_fkey"
+            columns: ["car_id"]
+            isOneToOne: false
+            referencedRelation: "cars"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       recommendations: {
         Row: {
           ai_explanation: string
@@ -104,6 +133,7 @@ export type Database = {
       searches: {
         Row: {
           car_type: string | null
+          conversation_id: string | null
           created_at: string | null
           fuel_type: string | null
           id: string
@@ -114,6 +144,7 @@ export type Database = {
         }
         Insert: {
           car_type?: string | null
+          conversation_id?: string | null
           created_at?: string | null
           fuel_type?: string | null
           id?: string
@@ -124,6 +155,7 @@ export type Database = {
         }
         Update: {
           car_type?: string | null
+          conversation_id?: string | null
           created_at?: string | null
           fuel_type?: string | null
           id?: string
