@@ -112,7 +112,7 @@ const FindCar = () => {
                 variant="ghost"
                 size="icon"
                 onClick={() => navigate('/favorites')}
-                className="text-muted-foreground hover:text-primary"
+                className="text-muted-foreground hover:text-red-500 hover:bg-accent/20 transition-all"
                 title="View Favorites"
               >
                 <Heart className="h-5 w-5" />
@@ -121,7 +121,7 @@ const FindCar = () => {
                 variant="ghost"
                 size="icon"
                 onClick={handleSignOut}
-                className="text-muted-foreground hover:text-destructive"
+                className="text-muted-foreground hover:text-destructive hover:bg-accent/20 transition-all"
                 title="Sign Out"
               >
                 <LogOut className="h-5 w-5" />

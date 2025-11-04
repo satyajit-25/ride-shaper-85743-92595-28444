@@ -72,8 +72,10 @@ const RecommendationResults = ({ recommendations }: Props) => {
                     onClick={() => toggleFavorite(rec.car.id)}
                     disabled={loading}
                     className={cn(
-                      "transition-colors",
-                      favorites.has(rec.car.id) && "text-red-500 hover:text-red-600"
+                      "transition-all hover:bg-accent/20",
+                      favorites.has(rec.car.id) 
+                        ? "text-red-500 hover:text-red-600" 
+                        : "hover:text-red-500"
                     )}
                   >
                     <Heart className={cn("w-5 h-5", favorites.has(rec.car.id) && "fill-current")} />

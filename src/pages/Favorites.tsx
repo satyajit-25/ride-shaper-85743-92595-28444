@@ -166,7 +166,7 @@ const Favorites = () => {
                         variant="secondary"
                         size="icon"
                         onClick={() => toggleFavorite(car.id)}
-                        className="bg-background/80 backdrop-blur-sm"
+                        className="bg-background/80 backdrop-blur-sm hover:bg-accent/40 hover:text-red-600 transition-all"
                       >
                         <Heart className="w-4 h-4 fill-destructive text-destructive" />
                       </Button>
