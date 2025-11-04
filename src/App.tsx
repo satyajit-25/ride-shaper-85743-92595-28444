@@ -8,6 +8,8 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import FindCar from "./pages/FindCar";
+import CompareFinancing from "./pages/CompareFinancing";
+import Favorites from "./pages/Favorites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -35,6 +37,22 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Index />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/compare-financing" 
+              element={
+                <ProtectedRoute>
+                  <CompareFinancing />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/favorites" 
+              element={
+                <ProtectedRoute>
+                  <Favorites />
                 </ProtectedRoute>
               } 
             />

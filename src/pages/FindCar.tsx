@@ -10,7 +10,7 @@ import RecommendationResults from "@/components/RecommendationResults";
 import SearchHistory from "@/components/SearchHistory";
 import ComparisonTable from "@/components/ComparisonTable";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ArrowLeft, Sparkles, LogOut } from "lucide-react";
+import { ArrowLeft, Sparkles, LogOut, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -108,6 +108,15 @@ const FindCar = () => {
             </div>
             
             <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/favorites')}
+                className="text-muted-foreground hover:text-primary"
+                title="View Favorites"
+              >
+                <Heart className="h-5 w-5" />
+              </Button>
               <Button
                 variant="ghost"
                 size="icon"
