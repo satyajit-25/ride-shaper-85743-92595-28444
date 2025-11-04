@@ -18,14 +18,16 @@ const FinancingCalculator = ({ carPrice, carName }: Props) => {
   const [loanTenure, setLoanTenure] = useState(5);
 
   // Calculate loan amount in rupees
-  const downPaymentInRupees = downPayment * 100000;
-  const loanAmount = carPriceInRupees - downPaymentInRupees;
-  const monthlyRate = interestRate / 12 / 100;
-  const numPayments = loanTenure * 12;
+  const downPaymentInRupees = Math.max(0, Math.min(downPayment, carPrice)) * 100000;
+  const loanAmount = Math.max(0, carPriceInRupees - downPaymentInRupees);
+  const monthlyRate = Math.max(0, interestRate) / 12 / 100;
+  const numPayments = Math.max(1, loanTenure) * 12;
   
   // EMI calculation
-  const emi = loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments) / 
-              (Math.pow(1 + monthlyRate, numPayments) - 1);
+  const emi = loanAmount > 0 && monthlyRate > 0
+    ? loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments) / 
+      (Math.pow(1 + monthlyRate, numPayments) - 1)
+    : loanAmount / numPayments;
   
   const totalAmount = emi * numPayments;
   const totalInterest = totalAmount - loanAmount;
@@ -58,6 +60,7 @@ const FinancingCalculator = ({ carPrice, carName }: Props) => {
                 step="0.5"
                 value={downPayment}
                 onChange={(e) => setDownPayment(Number(e.target.value))}
+                min={0}
                 max={carPrice}
               />
             </div>
@@ -70,6 +73,8 @@ const FinancingCalculator = ({ carPrice, carName }: Props) => {
                 step="0.1"
                 value={interestRate}
                 onChange={(e) => setInterestRate(Number(e.target.value))}
+                min={0.1}
+                max={30}
               />
             </div>
 
