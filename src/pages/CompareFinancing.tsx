@@ -6,19 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, X, Save, History } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 interface Car {
   id: string;
@@ -49,22 +40,15 @@ const CompareFinancing = () => {
     loanTenure: 5,
   });
   const [comparisonName, setComparisonName] = useState("");
-  const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const cars = location.state?.selectedCars as Car[];
-    const savedParams = location.state?.savedParams as FinancingParams;
-    
     if (!cars || cars.length === 0) {
       navigate("/find-car");
       return;
     }
-    
     setSelectedCars(cars);
-    if (savedParams) {
-      setFinancingParams(savedParams);
-    }
   }, [location.state, navigate]);
 
   const calculateFinancing = (carPrice: number) => {
@@ -101,20 +85,11 @@ const CompareFinancing = () => {
     setSelectedCars(updatedCars);
   };
 
-  const handleSaveComparison = async () => {
+  const saveComparison = async () => {
     if (!user) {
       toast({
-        title: "Not authenticated",
-        description: "Please sign in to save comparisons",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!comparisonName.trim()) {
-      toast({
-        title: "Name required",
-        description: "Please enter a name for this comparison",
+        title: "Error",
+        description: "You must be logged in to save comparisons",
         variant: "destructive",
       });
       return;
@@ -122,20 +97,21 @@ const CompareFinancing = () => {
 
     setIsSaving(true);
     try {
-      const { error } = await supabase.from("comparison_history").insert([{
-        user_id: user.id,
-        comparison_name: comparisonName,
-        car_ids: selectedCars.map(car => car.id),
-        financing_params: financingParams as any,
-      }]);
+      const { error } = await supabase
+        .from("comparison_history")
+        .insert({
+          user_id: user.id,
+          comparison_name: comparisonName || `Comparison on ${new Date().toLocaleDateString()}`,
+          car_ids: selectedCars.map(car => car.id),
+          financing_params: financingParams as any,
+        });
 
       if (error) throw error;
 
       toast({
-        title: "Comparison saved",
-        description: "You can view it in your comparison history",
+        title: "Success",
+        description: "Comparison saved successfully",
       });
-      setIsSaveDialogOpen(false);
       setComparisonName("");
     } catch (error) {
       console.error("Error saving comparison:", error);
@@ -151,30 +127,39 @@ const CompareFinancing = () => {
 
   // Prepare chart data
   const priceChartData = selectedCars.map(car => ({
-    name: car.name.length > 15 ? car.name.substring(0, 15) + "..." : car.name,
+    name: car.name.length > 15 ? car.name.substring(0, 15) + '...' : car.name,
     price: car.price_lakhs,
-    mileage: car.mileage_kmpl || 0,
+    emi: calculateFinancing(car.price_lakhs).emi,
   }));
 
-  const financingChartData = selectedCars.map(car => {
+  const mileageChartData = selectedCars
+    .filter(car => car.mileage_kmpl)
+    .map(car => ({
+      name: car.name.length > 15 ? car.name.substring(0, 15) + '...' : car.name,
+      mileage: car.mileage_kmpl,
+    }));
+
+  const totalCostData = selectedCars.map(car => {
     const financing = calculateFinancing(car.price_lakhs);
     return {
-      name: car.name.length > 15 ? car.name.substring(0, 15) + "..." : car.name,
-      emi: financing.emi,
+      name: car.name.length > 15 ? car.name.substring(0, 15) + '...' : car.name,
+      downPayment: financing.downPaymentAmount,
+      loanAmount: financing.loanAmount,
       interest: financing.totalInterest,
-      total: financing.totalAmount,
     };
   });
 
-  const radarChartData = selectedCars.map(car => {
-    const financing = calculateFinancing(car.price_lakhs);
-    return {
-      car: car.name.length > 12 ? car.name.substring(0, 12) + "..." : car.name,
-      Price: car.price_lakhs,
-      Mileage: car.mileage_kmpl || 0,
-      EMI: financing.emi,
-    };
-  });
+  const fuelTypeData = selectedCars.reduce((acc, car) => {
+    const existing = acc.find(item => item.name === car.fuel_type);
+    if (existing) {
+      existing.value += 1;
+    } else {
+      acc.push({ name: car.fuel_type, value: 1 });
+    }
+    return acc;
+  }, [] as { name: string; value: number }[]);
+
+  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
   return (
     <div className="min-h-screen bg-background">
@@ -200,49 +185,11 @@ const CompareFinancing = () => {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="sm"
                 onClick={() => navigate("/comparison-history")}
               >
                 <History className="w-4 h-4 mr-2" />
                 History
               </Button>
-              <Dialog open={isSaveDialogOpen} onOpenChange={setIsSaveDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="default" size="sm">
-                    <Save className="w-4 h-4 mr-2" />
-                    Save
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Save Comparison</DialogTitle>
-                    <DialogDescription>
-                      Give this comparison a name to save it for later reference
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="py-4">
-                    <Label htmlFor="comparison-name">Comparison Name</Label>
-                    <Input
-                      id="comparison-name"
-                      value={comparisonName}
-                      onChange={(e) => setComparisonName(e.target.value)}
-                      placeholder="e.g., Budget SUVs Comparison"
-                      className="mt-2"
-                    />
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsSaveDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSaveComparison} disabled={isSaving}>
-                      {isSaving ? "Saving..." : "Save"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
               <ThemeToggle />
             </div>
           </div>
@@ -250,6 +197,27 @@ const CompareFinancing = () => {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Save Comparison */}
+        <Card className="p-6 mb-6">
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <Label htmlFor="comparisonName">Comparison Name (optional)</Label>
+              <Input
+                id="comparisonName"
+                placeholder="e.g., Budget SUV comparison"
+                value={comparisonName}
+                onChange={(e) => setComparisonName(e.target.value)}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button onClick={saveComparison} disabled={isSaving}>
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? "Saving..." : "Save Comparison"}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
         {/* Global Financing Parameters */}
         <Card className="p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Financing Parameters</h2>
@@ -301,6 +269,107 @@ const CompareFinancing = () => {
             </div>
           </div>
         </Card>
+
+        {/* Visual Charts */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Price & EMI Comparison Chart */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Price & EMI Comparison</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={priceChartData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="name" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="price" fill="hsl(var(--primary))" name="Price (₹L)" />
+                <Bar dataKey="emi" fill="hsl(var(--secondary))" name="Monthly EMI (₹L)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          {/* Mileage Comparison Chart */}
+          {mileageChartData.length > 0 && (
+            <Card className="p-6">
+              <h2 className="text-xl font-semibold mb-4">Mileage Comparison</h2>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={mileageChartData}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <XAxis dataKey="name" className="text-xs" />
+                  <YAxis className="text-xs" />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  <Bar dataKey="mileage" fill="hsl(var(--accent))" name="Mileage (km/l)" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {/* Total Cost Breakdown */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Total Cost Breakdown</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={totalCostData}>
+                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                <XAxis dataKey="name" className="text-xs" />
+                <YAxis className="text-xs" />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="downPayment" stackId="a" fill="hsl(var(--primary))" name="Down Payment (₹L)" />
+                <Bar dataKey="loanAmount" stackId="a" fill="hsl(var(--secondary))" name="Loan Amount (₹L)" />
+                <Bar dataKey="interest" stackId="a" fill="hsl(var(--destructive))" name="Total Interest (₹L)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          {/* Fuel Type Distribution */}
+          <Card className="p-6">
+            <h2 className="text-xl font-semibold mb-4">Fuel Type Distribution</h2>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={fuelTypeData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={(entry) => `${entry.name}: ${entry.value}`}
+                  outerRadius={80}
+                  fill="hsl(var(--primary))"
+                  dataKey="value"
+                >
+                  {fuelTypeData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))',
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px'
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </div>
 
         {/* Comparison Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -384,78 +453,6 @@ const CompareFinancing = () => {
               </Card>
             );
           })}
-        </div>
-
-        {/* Visual Charts Section */}
-        <div className="mt-8 space-y-8">
-          {/* Price & Mileage Comparison */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Price & Mileage Comparison</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={priceChartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" className="text-xs" />
-                <YAxis yAxisId="left" className="text-xs" />
-                <YAxis yAxisId="right" orientation="right" className="text-xs" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)"
-                  }}
-                />
-                <Legend />
-                <Bar yAxisId="left" dataKey="price" fill="hsl(var(--primary))" name="Price (Lakhs)" />
-                <Bar yAxisId="right" dataKey="mileage" fill="hsl(var(--secondary))" name="Mileage (km/l)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Financing Breakdown */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Financing Breakdown</h2>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={financingChartData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)"
-                  }}
-                />
-                <Legend />
-                <Bar dataKey="emi" fill="hsl(var(--primary))" name="Monthly EMI (Lakhs)" />
-                <Bar dataKey="interest" fill="hsl(var(--destructive))" name="Total Interest (Lakhs)" />
-                <Bar dataKey="total" fill="hsl(var(--secondary))" name="Total Amount (Lakhs)" />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-
-          {/* Radar Comparison */}
-          <Card className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Overall Comparison</h2>
-            <ResponsiveContainer width="100%" height={400}>
-              <RadarChart data={radarChartData}>
-                <PolarGrid className="stroke-muted" />
-                <PolarAngleAxis dataKey="car" className="text-xs" />
-                <PolarRadiusAxis className="text-xs" />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "var(--radius)"
-                  }}
-                />
-                <Legend />
-                <Radar name="Price (Lakhs)" dataKey="Price" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.6} />
-                <Radar name="Mileage (km/l)" dataKey="Mileage" stroke="hsl(var(--secondary))" fill="hsl(var(--secondary))" fillOpacity={0.6} />
-                <Radar name="EMI (Lakhs)" dataKey="EMI" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive))" fillOpacity={0.6} />
-              </RadarChart>
-            </ResponsiveContainer>
-          </Card>
         </div>
 
         {/* Summary Card */}
