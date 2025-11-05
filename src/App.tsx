@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import FindCar from "./pages/FindCar";
 import CompareFinancing from "./pages/CompareFinancing";
 import Favorites from "./pages/Favorites";
+import ComparisonHistory from "./pages/ComparisonHistory";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Favorites />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/comparison-history" 
+              element={
+                <ProtectedRoute>
+                  <ComparisonHistory />
                 </ProtectedRoute>
               } 
             />

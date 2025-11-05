@@ -56,6 +56,33 @@ export type Database = {
         }
         Relationships: []
       }
+      comparison_history: {
+        Row: {
+          car_ids: string[]
+          comparison_name: string | null
+          created_at: string
+          financing_params: Json
+          id: string
+          user_id: string
+        }
+        Insert: {
+          car_ids: string[]
+          comparison_name?: string | null
+          created_at?: string
+          financing_params: Json
+          id?: string
+          user_id: string
+        }
+        Update: {
+          car_ids?: string[]
+          comparison_name?: string | null
+          created_at?: string
+          financing_params?: Json
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       favorites: {
         Row: {
           car_id: string
