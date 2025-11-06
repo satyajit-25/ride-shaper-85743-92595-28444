@@ -56,7 +56,7 @@ const ComparisonHistory = () => {
 
       if (error) throw error;
 
-      setHistory((data || []) as ComparisonHistory[]);
+      setHistory((data || []) as unknown as ComparisonHistory[]);
 
       // Fetch car details for all comparisons
       const allCarIds = Array.from(
