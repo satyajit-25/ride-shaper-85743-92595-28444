@@ -1,17 +1,12 @@
-import { useEffect, useState, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, X, Save, History, Download, Share2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
 
 interface Car {
   id: string;
@@ -30,39 +25,72 @@ interface FinancingParams {
   loanTenure: number;
 }
 
-const CompareFinancing = () => {
-  const location = useLocation();
+interface ComparisonData {
+  id: string;
+  comparison_name: string | null;
+  car_ids: string[];
+  financing_params: FinancingParams;
+  created_at: string;
+}
+
+const SharedComparison = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
   const { toast } = useToast();
-  const [selectedCars, setSelectedCars] = useState<Car[]>([]);
-  const [financingParams, setFinancingParams] = useState<FinancingParams>({
-    downPayment: 20, // percentage
-    interestRate: 8.5,
-    loanTenure: 5,
-  });
-  const [comparisonName, setComparisonName] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [savedComparisonId, setSavedComparisonId] = useState<string | null>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState(true);
+  const [comparison, setComparison] = useState<ComparisonData | null>(null);
+  const [cars, setCars] = useState<Car[]>([]);
 
   useEffect(() => {
-    const cars = location.state?.selectedCars as Car[];
-    if (!cars || cars.length === 0) {
-      navigate("/find-car");
+    if (!id) {
+      navigate("/");
       return;
     }
-    setSelectedCars(cars);
-  }, [location.state, navigate]);
+    fetchSharedComparison();
+  }, [id, navigate]);
+
+  const fetchSharedComparison = async () => {
+    try {
+      const { data: comparisonData, error: comparisonError } = await supabase
+        .from("comparison_history")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (comparisonError) throw comparisonError;
+
+      setComparison(comparisonData as unknown as ComparisonData);
+
+      const { data: carsData, error: carsError } = await supabase
+        .from("cars")
+        .select("*")
+        .in("id", comparisonData.car_ids);
+
+      if (carsError) throw carsError;
+
+      setCars(carsData || []);
+    } catch (error) {
+      console.error("Error fetching shared comparison:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load comparison. It may be private or deleted.",
+        variant: "destructive",
+      });
+      navigate("/");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const calculateFinancing = (carPrice: number) => {
+    if (!comparison) return { downPaymentAmount: 0, loanAmount: 0, emi: 0, totalInterest: 0, totalAmount: 0 };
+    
     const carPriceInRupees = carPrice * 100000;
-    const downPaymentAmount = (carPrice * financingParams.downPayment) / 100;
+    const downPaymentAmount = (carPrice * comparison.financing_params.downPayment) / 100;
     const downPaymentInRupees = downPaymentAmount * 100000;
     const loanAmount = Math.max(0, carPriceInRupees - downPaymentInRupees);
-    const monthlyRate = Math.max(0, financingParams.interestRate) / 12 / 100;
-    const numPayments = Math.max(1, financingParams.loanTenure) * 12;
+    const monthlyRate = Math.max(0, comparison.financing_params.interestRate) / 12 / 100;
+    const numPayments = Math.max(1, comparison.financing_params.loanTenure) * 12;
     
     const emi = loanAmount > 0 && monthlyRate > 0
       ? loanAmount * monthlyRate * Math.pow(1 + monthlyRate, numPayments) / 
@@ -81,153 +109,32 @@ const CompareFinancing = () => {
     };
   };
 
-  const removeCar = (carId: string) => {
-    const updatedCars = selectedCars.filter(car => car.id !== carId);
-    if (updatedCars.length === 0) {
-      navigate("/find-car");
-      return;
-    }
-    setSelectedCars(updatedCars);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
-  const saveComparison = async () => {
-    if (!user) {
-      toast({
-        title: "Error",
-        description: "You must be logged in to save comparisons",
-        variant: "destructive",
-      });
-      return;
-    }
+  if (!comparison) {
+    return null;
+  }
 
-    setIsSaving(true);
-    try {
-      const { data, error } = await supabase
-        .from("comparison_history")
-        .insert({
-          user_id: user.id,
-          comparison_name: comparisonName || `Comparison on ${new Date().toLocaleDateString()}`,
-          car_ids: selectedCars.map(car => car.id),
-          financing_params: financingParams as any,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      setSavedComparisonId(data.id);
-      toast({
-        title: "Success",
-        description: "Comparison saved successfully",
-      });
-      setComparisonName("");
-    } catch (error) {
-      console.error("Error saving comparison:", error);
-      toast({
-        title: "Error",
-        description: "Failed to save comparison",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const exportToPDF = async () => {
-    if (!contentRef.current) return;
-
-    setIsExporting(true);
-    try {
-      const canvas = await html2canvas(contentRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: getComputedStyle(document.documentElement)
-          .getPropertyValue('--background')
-          .trim() || '#ffffff',
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({
-        orientation: "portrait",
-        unit: "mm",
-        format: "a4",
-      });
-
-      const imgWidth = 210;
-      const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      pdf.save(`car-comparison-${new Date().getTime()}.pdf`);
-      
-      toast({
-        title: "Success",
-        description: "Comparison exported to PDF",
-      });
-    } catch (error) {
-      console.error("Error exporting to PDF:", error);
-      toast({
-        title: "Error",
-        description: "Failed to export comparison",
-        variant: "destructive",
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const shareComparison = async () => {
-    if (!savedComparisonId) {
-      toast({
-        title: "Info",
-        description: "Please save the comparison first to share it",
-      });
-      return;
-    }
-
-    const shareUrl = `${window.location.origin}/shared-comparison/${savedComparisonId}`;
-    
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast({
-        title: "Link copied!",
-        description: "Share link has been copied to clipboard",
-      });
-    } catch (error) {
-      toast({
-        title: "Share Link",
-        description: shareUrl,
-      });
-    }
-  };
-
-  // Prepare chart data
-  const priceChartData = selectedCars.map(car => ({
+  const priceChartData = cars.map(car => ({
     name: car.name.length > 15 ? car.name.substring(0, 15) + '...' : car.name,
     price: car.price_lakhs,
     emi: calculateFinancing(car.price_lakhs).emi,
   }));
 
-  const mileageChartData = selectedCars
+  const mileageChartData = cars
     .filter(car => car.mileage_kmpl)
     .map(car => ({
       name: car.name.length > 15 ? car.name.substring(0, 15) + '...' : car.name,
       mileage: car.mileage_kmpl,
     }));
 
-  const totalCostData = selectedCars.map(car => {
+  const totalCostData = cars.map(car => {
     const financing = calculateFinancing(car.price_lakhs);
     return {
       name: car.name.length > 15 ? car.name.substring(0, 15) + '...' : car.name,
@@ -237,7 +144,7 @@ const CompareFinancing = () => {
     };
   });
 
-  const fuelTypeData = selectedCars.reduce((acc, car) => {
+  const fuelTypeData = cars.reduce((acc, car) => {
     const existing = acc.find(item => item.name === car.fuel_type);
     if (existing) {
       existing.value += 1;
@@ -250,8 +157,7 @@ const CompareFinancing = () => {
   const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
 
   return (
-    <div className="min-h-screen bg-background" ref={contentRef}>
-      {/* Header */}
+    <div className="min-h-screen bg-background">
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
@@ -259,124 +165,44 @@ const CompareFinancing = () => {
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => navigate("/find-car")}
+                onClick={() => navigate("/")}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
               <div>
-                <h1 className="text-2xl font-bold">Compare Financing Options</h1>
+                <h1 className="text-2xl font-bold">
+                  {comparison.comparison_name || "Shared Comparison"}
+                </h1>
                 <p className="text-sm text-muted-foreground">
-                  Comparing {selectedCars.length} car{selectedCars.length > 1 ? "s" : ""}
+                  Comparing {cars.length} car{cars.length > 1 ? "s" : ""}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={exportToPDF}
-                disabled={isExporting}
-              >
-                <Download className="w-4 h-4 mr-2" />
-                {isExporting ? "Exporting..." : "Export PDF"}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={shareComparison}
-                disabled={!savedComparisonId}
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/comparison-history")}
-              >
-                <History className="w-4 h-4 mr-2" />
-                History
-              </Button>
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
           </div>
         </div>
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        {/* Save Comparison */}
-        <Card className="p-6 mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="comparisonName">Comparison Name (optional)</Label>
-              <Input
-                id="comparisonName"
-                placeholder="e.g., Budget SUV comparison"
-                value={comparisonName}
-                onChange={(e) => setComparisonName(e.target.value)}
-              />
-            </div>
-            <div className="flex items-end">
-              <Button onClick={saveComparison} disabled={isSaving}>
-                <Save className="w-4 h-4 mr-2" />
-                {isSaving ? "Saving..." : "Save Comparison"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* Global Financing Parameters */}
         <Card className="p-6 mb-8">
           <h2 className="text-xl font-semibold mb-4">Financing Parameters</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <Label htmlFor="downPayment">Down Payment (%)</Label>
-              <Input
-                id="downPayment"
-                type="number"
-                step="1"
-                value={financingParams.downPayment}
-                onChange={(e) => setFinancingParams(prev => ({ 
-                  ...prev, 
-                  downPayment: Math.max(0, Math.min(100, Number(e.target.value)))
-                }))}
-                min={0}
-                max={100}
-              />
+              <p className="text-sm text-muted-foreground">Down Payment</p>
+              <p className="text-2xl font-bold">{comparison.financing_params.downPayment}%</p>
             </div>
             <div>
-              <Label htmlFor="interestRate">Interest Rate (% per annum)</Label>
-              <Input
-                id="interestRate"
-                type="number"
-                step="0.1"
-                value={financingParams.interestRate}
-                onChange={(e) => setFinancingParams(prev => ({ 
-                  ...prev, 
-                  interestRate: Number(e.target.value)
-                }))}
-                min={0.1}
-                max={30}
-              />
+              <p className="text-sm text-muted-foreground">Interest Rate</p>
+              <p className="text-2xl font-bold">{comparison.financing_params.interestRate}% p.a.</p>
             </div>
             <div>
-              <Label htmlFor="loanTenure">Loan Tenure (Years)</Label>
-              <Input
-                id="loanTenure"
-                type="number"
-                step="1"
-                value={financingParams.loanTenure}
-                onChange={(e) => setFinancingParams(prev => ({ 
-                  ...prev, 
-                  loanTenure: Number(e.target.value)
-                }))}
-                min={1}
-                max={10}
-              />
+              <p className="text-sm text-muted-foreground">Loan Tenure</p>
+              <p className="text-2xl font-bold">{comparison.financing_params.loanTenure} years</p>
             </div>
           </div>
         </Card>
 
-        {/* Visual Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Price & EMI Comparison Chart */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Price & EMI Comparison</h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -398,7 +224,6 @@ const CompareFinancing = () => {
             </ResponsiveContainer>
           </Card>
 
-          {/* Mileage Comparison Chart */}
           {mileageChartData.length > 0 && (
             <Card className="p-6">
               <h2 className="text-xl font-semibold mb-4">Mileage Comparison</h2>
@@ -421,7 +246,6 @@ const CompareFinancing = () => {
             </Card>
           )}
 
-          {/* Total Cost Breakdown */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Total Cost Breakdown</h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -444,7 +268,6 @@ const CompareFinancing = () => {
             </ResponsiveContainer>
           </Card>
 
-          {/* Fuel Type Distribution */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Fuel Type Distribution</h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -475,9 +298,8 @@ const CompareFinancing = () => {
           </Card>
         </div>
 
-        {/* Comparison Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {selectedCars.map((car) => {
+          {cars.map((car) => {
             const financing = calculateFinancing(car.price_lakhs);
             
             return (
@@ -494,14 +316,6 @@ const CompareFinancing = () => {
                       <span className="text-muted-foreground">No image</span>
                     </div>
                   )}
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-2 right-2"
-                    onClick={() => removeCar(car.id)}
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
                 </div>
 
                 <div className="p-6 space-y-4">
@@ -559,7 +373,6 @@ const CompareFinancing = () => {
           })}
         </div>
 
-        {/* Summary Card */}
         <Card className="mt-8 p-6">
           <h2 className="text-xl font-semibold mb-4">Comparison Summary</h2>
           <div className="overflow-x-auto">
@@ -574,7 +387,7 @@ const CompareFinancing = () => {
                 </tr>
               </thead>
               <tbody>
-                {selectedCars.map((car) => {
+                {cars.map((car) => {
                   const financing = calculateFinancing(car.price_lakhs);
                   return (
                     <tr key={car.id} className="border-b">
@@ -599,4 +412,4 @@ const CompareFinancing = () => {
   );
 };
 
-export default CompareFinancing;
+export default SharedComparison;

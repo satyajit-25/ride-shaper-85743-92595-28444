@@ -11,6 +11,7 @@ import FindCar from "./pages/FindCar";
 import CompareFinancing from "./pages/CompareFinancing";
 import Favorites from "./pages/Favorites";
 import ComparisonHistory from "./pages/ComparisonHistory";
+import SharedComparison from "./pages/SharedComparison";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -65,6 +66,7 @@ const App = () => (
                 </ProtectedRoute>
               } 
             />
+            <Route path="/shared-comparison/:id" element={<SharedComparison />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
