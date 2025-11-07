@@ -197,6 +197,21 @@ const CompareFinancing = () => {
       return;
     }
 
+    // Update the comparison to be publicly accessible
+    const { error: updateError } = await supabase
+      .from("comparison_history")
+      .update({ is_public: true })
+      .eq("id", savedComparisonId);
+
+    if (updateError) {
+      toast({
+        title: "Error",
+        description: "Failed to make comparison shareable",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const shareUrl = `${window.location.origin}/shared-comparison/${savedComparisonId}`;
     
     try {

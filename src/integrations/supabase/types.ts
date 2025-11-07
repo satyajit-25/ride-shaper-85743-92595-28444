@@ -63,6 +63,7 @@ export type Database = {
           created_at: string
           financing_params: Json
           id: string
+          is_public: boolean
           user_id: string
         }
         Insert: {
@@ -71,6 +72,7 @@ export type Database = {
           created_at?: string
           financing_params: Json
           id?: string
+          is_public?: boolean
           user_id: string
         }
         Update: {
@@ -79,6 +81,7 @@ export type Database = {
           created_at?: string
           financing_params?: Json
           id?: string
+          is_public?: boolean
           user_id?: string
         }
         Relationships: []
