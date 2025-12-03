@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, X, Save, History, Download, Share2 } from "lucide-react";
+import { ArrowLeft, X, Save, History, Download, Share2, Mail, MessageCircle, Link2, Copy } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -138,44 +144,79 @@ const CompareFinancing = () => {
 
     setIsExporting(true);
     try {
-      // Get computed background color as a proper color value
-      const isDarkMode = document.documentElement.classList.contains('dark');
-      const backgroundColor = isDarkMode ? '#1a1a2e' : '#ffffff';
+      // Always export in light mode for better readability
+      const backgroundColor = '#ffffff';
+      const textColor = '#1a1a2e';
 
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
         backgroundColor: backgroundColor,
+        windowWidth: 1200, // Fixed width for consistent PDF layout
         onclone: (clonedDoc) => {
-          // Convert CSS variables to actual colors for html2canvas compatibility
           const root = clonedDoc.documentElement;
-          root.style.setProperty('--background', isDarkMode ? '222.2 84% 4.9%' : '0 0% 100%');
-          root.style.setProperty('--foreground', isDarkMode ? '210 40% 98%' : '222.2 84% 4.9%');
+          // Force light mode colors for PDF
+          root.classList.remove('dark');
+          root.style.setProperty('--background', '0 0% 100%');
+          root.style.setProperty('--foreground', '222.2 84% 4.9%');
+          root.style.setProperty('--card', '0 0% 100%');
+          root.style.setProperty('--card-foreground', '222.2 84% 4.9%');
+          root.style.setProperty('--muted', '210 40% 96%');
+          root.style.setProperty('--muted-foreground', '215.4 16.3% 46.9%');
+          root.style.setProperty('--border', '214.3 31.8% 91.4%');
+          
+          // Hide interactive elements in PDF
+          const buttons = clonedDoc.querySelectorAll('button');
+          buttons.forEach(btn => {
+            (btn as HTMLElement).style.display = 'none';
+          });
+          
+          // Hide input fields
+          const inputs = clonedDoc.querySelectorAll('input');
+          inputs.forEach(input => {
+            (input as HTMLElement).style.display = 'none';
+          });
+          
+          // Hide labels for inputs
+          const labels = clonedDoc.querySelectorAll('label');
+          labels.forEach(label => {
+            (label as HTMLElement).style.display = 'none';
+          });
+          
+          // Style the content for print
+          const container = clonedDoc.querySelector('[data-pdf-content]');
+          if (container) {
+            (container as HTMLElement).style.backgroundColor = backgroundColor;
+            (container as HTMLElement).style.color = textColor;
+            (container as HTMLElement).style.padding = '20px';
+          }
         }
       });
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
-        orientation: "portrait",
+        orientation: "landscape", // Better for comparison tables
         unit: "mm",
         format: "a4",
       });
 
-      const imgWidth = 210;
-      const pageHeight = 297;
+      const pageWidth = 297;
+      const pageHeight = 210;
+      const margin = 10;
+      const imgWidth = pageWidth - (margin * 2);
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       let heightLeft = imgHeight;
-      let position = 0;
+      let position = margin;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+      heightLeft -= (pageHeight - margin * 2);
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
+      while (heightLeft > 0) {
+        position = margin - (imgHeight - heightLeft);
         pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+        pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
+        heightLeft -= (pageHeight - margin * 2);
       }
 
       pdf.save(`car-comparison-${new Date().getTime()}.pdf`);
@@ -196,13 +237,13 @@ const CompareFinancing = () => {
     }
   };
 
-  const shareComparison = async () => {
+  const getShareUrl = async (): Promise<string | null> => {
     if (!savedComparisonId) {
       toast({
         title: "Info",
         description: "Please save the comparison first to share it",
       });
-      return;
+      return null;
     }
 
     // Update the comparison to be publicly accessible
@@ -217,22 +258,59 @@ const CompareFinancing = () => {
         description: "Failed to make comparison shareable",
         variant: "destructive",
       });
-      return;
+      return null;
     }
 
-    const shareUrl = `${window.location.origin}/shared-comparison/${savedComparisonId}`;
-    
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      toast({
-        title: "Link copied!",
-        description: "Share link has been copied to clipboard",
-      });
-    } catch (error) {
-      toast({
-        title: "Share Link",
-        description: shareUrl,
-      });
+    return `${window.location.origin}/shared-comparison/${savedComparisonId}`;
+  };
+
+  const shareViaWhatsApp = async () => {
+    const url = await getShareUrl();
+    if (url) {
+      const text = `Check out this car comparison: ${url}`;
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+    }
+  };
+
+  const shareViaEmail = async () => {
+    const url = await getShareUrl();
+    if (url) {
+      const subject = comparisonName || "Car Financing Comparison";
+      const body = `Hi,\n\nI wanted to share this car comparison with you:\n\n${url}\n\nBest regards`;
+      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }
+  };
+
+  const copyShareLink = async () => {
+    const url = await getShareUrl();
+    if (url) {
+      try {
+        await navigator.clipboard.writeText(url);
+        toast({
+          title: "Link copied!",
+          description: "Share link has been copied to clipboard",
+        });
+      } catch (error) {
+        toast({
+          title: "Share Link",
+          description: url,
+        });
+      }
+    }
+  };
+
+  const shareNative = async () => {
+    const url = await getShareUrl();
+    if (url && navigator.share) {
+      try {
+        await navigator.share({
+          title: comparisonName || "Car Financing Comparison",
+          text: "Check out this car comparison",
+          url: url,
+        });
+      } catch (error) {
+        // User cancelled or error
+      }
     }
   };
 
@@ -270,12 +348,12 @@ const CompareFinancing = () => {
     return acc;
   }, [] as { name: string; value: number }[]);
 
-  const COLORS = ['hsl(var(--primary))', 'hsl(var(--secondary))', 'hsl(var(--accent))', '#8884d8', '#82ca9d', '#ffc658'];
+  const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
   return (
-    <div className="min-h-screen bg-background" ref={contentRef}>
-      {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+    <div className="min-h-screen bg-background">
+      {/* Header - excluded from PDF */}
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10 print:hidden">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -302,14 +380,34 @@ const CompareFinancing = () => {
                 <Download className="w-4 h-4 mr-2" />
                 {isExporting ? "Exporting..." : "Export PDF"}
               </Button>
-              <Button
-                variant="outline"
-                onClick={shareComparison}
-                disabled={!savedComparisonId}
-              >
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" disabled={!savedComparisonId}>
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem onClick={shareViaWhatsApp} className="cursor-pointer">
+                    <MessageCircle className="w-4 h-4 mr-2 text-green-500" />
+                    WhatsApp
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={shareViaEmail} className="cursor-pointer">
+                    <Mail className="w-4 h-4 mr-2 text-blue-500" />
+                    Email
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={copyShareLink} className="cursor-pointer">
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copy Link
+                  </DropdownMenuItem>
+                  {typeof navigator !== 'undefined' && navigator.share && (
+                    <DropdownMenuItem onClick={shareNative} className="cursor-pointer">
+                      <Link2 className="w-4 h-4 mr-2" />
+                      More Options
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 variant="outline"
                 onClick={() => navigate("/comparison-history")}
@@ -323,82 +421,110 @@ const CompareFinancing = () => {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Save Comparison */}
-        <Card className="p-6 mb-6">
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <Label htmlFor="comparisonName">Comparison Name (optional)</Label>
-              <Input
-                id="comparisonName"
-                placeholder="e.g., Budget SUV comparison"
-                value={comparisonName}
-                onChange={(e) => setComparisonName(e.target.value)}
-              />
+      {/* PDF Content Area */}
+      <div ref={contentRef} data-pdf-content className="bg-background">
+        {/* PDF Header - only visible in PDF */}
+        <div className="hidden print:block p-6 border-b mb-6">
+          <h1 className="text-3xl font-bold text-center">Car Financing Comparison</h1>
+          <p className="text-center text-muted-foreground mt-2">
+            Generated on {new Date().toLocaleDateString()}
+          </p>
+        </div>
+        
+        <div className="container mx-auto px-4 py-8">
+          {/* Save Comparison - hidden in PDF */}
+          <Card className="p-6 mb-6 print:hidden">
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <Label htmlFor="comparisonName">Comparison Name (optional)</Label>
+                <Input
+                  id="comparisonName"
+                  placeholder="e.g., Budget SUV comparison"
+                  value={comparisonName}
+                  onChange={(e) => setComparisonName(e.target.value)}
+                />
+              </div>
+              <div className="flex items-end">
+                <Button onClick={saveComparison} disabled={isSaving}>
+                  <Save className="w-4 h-4 mr-2" />
+                  {isSaving ? "Saving..." : "Save Comparison"}
+                </Button>
+              </div>
             </div>
-            <div className="flex items-end">
-              <Button onClick={saveComparison} disabled={isSaving}>
-                <Save className="w-4 h-4 mr-2" />
-                {isSaving ? "Saving..." : "Save Comparison"}
-              </Button>
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* Global Financing Parameters */}
-        <Card className="p-6 mb-8">
-          <h2 className="text-xl font-semibold mb-4">Financing Parameters</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <Label htmlFor="downPayment">Down Payment (%)</Label>
-              <Input
-                id="downPayment"
-                type="number"
-                step="1"
-                value={financingParams.downPayment}
-                onChange={(e) => setFinancingParams(prev => ({ 
-                  ...prev, 
-                  downPayment: Math.max(0, Math.min(100, Number(e.target.value)))
-                }))}
-                min={0}
-                max={100}
-              />
+          {/* Financing Parameters - Show values only in PDF */}
+          <Card className="p-6 mb-8">
+            <h2 className="text-xl font-semibold mb-4">Financing Parameters</h2>
+            
+            {/* Interactive inputs - hidden in PDF */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
+              <div>
+                <Label htmlFor="downPayment">Down Payment (%)</Label>
+                <Input
+                  id="downPayment"
+                  type="number"
+                  step="1"
+                  value={financingParams.downPayment}
+                  onChange={(e) => setFinancingParams(prev => ({ 
+                    ...prev, 
+                    downPayment: Math.max(0, Math.min(100, Number(e.target.value)))
+                  }))}
+                  min={0}
+                  max={100}
+                />
+              </div>
+              <div>
+                <Label htmlFor="interestRate">Interest Rate (% per annum)</Label>
+                <Input
+                  id="interestRate"
+                  type="number"
+                  step="0.1"
+                  value={financingParams.interestRate}
+                  onChange={(e) => setFinancingParams(prev => ({ 
+                    ...prev, 
+                    interestRate: Number(e.target.value)
+                  }))}
+                  min={0.1}
+                  max={30}
+                />
+              </div>
+              <div>
+                <Label htmlFor="loanTenure">Loan Tenure (Years)</Label>
+                <Input
+                  id="loanTenure"
+                  type="number"
+                  step="1"
+                  value={financingParams.loanTenure}
+                  onChange={(e) => setFinancingParams(prev => ({ 
+                    ...prev, 
+                    loanTenure: Number(e.target.value)
+                  }))}
+                  min={1}
+                  max={10}
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="interestRate">Interest Rate (% per annum)</Label>
-              <Input
-                id="interestRate"
-                type="number"
-                step="0.1"
-                value={financingParams.interestRate}
-                onChange={(e) => setFinancingParams(prev => ({ 
-                  ...prev, 
-                  interestRate: Number(e.target.value)
-                }))}
-                min={0.1}
-                max={30}
-              />
+            
+            {/* Static display for PDF */}
+            <div className="hidden print:grid grid-cols-3 gap-6 text-center">
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Down Payment</p>
+                <p className="text-2xl font-bold">{financingParams.downPayment}%</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Interest Rate</p>
+                <p className="text-2xl font-bold">{financingParams.interestRate}% p.a.</p>
+              </div>
+              <div className="p-4 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">Loan Tenure</p>
+                <p className="text-2xl font-bold">{financingParams.loanTenure} Years</p>
+              </div>
             </div>
-            <div>
-              <Label htmlFor="loanTenure">Loan Tenure (Years)</Label>
-              <Input
-                id="loanTenure"
-                type="number"
-                step="1"
-                value={financingParams.loanTenure}
-                onChange={(e) => setFinancingParams(prev => ({ 
-                  ...prev, 
-                  loanTenure: Number(e.target.value)
-                }))}
-                min={1}
-                max={10}
-              />
-            </div>
-          </div>
-        </Card>
+          </Card>
 
-        {/* Visual Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          {/* Visual Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Price & EMI Comparison Chart */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Price & EMI Comparison</h2>
@@ -617,6 +743,7 @@ const CompareFinancing = () => {
             </table>
           </div>
         </Card>
+        </div>
       </div>
     </div>
   );
