@@ -138,13 +138,21 @@ const CompareFinancing = () => {
 
     setIsExporting(true);
     try {
+      // Get computed background color as a proper color value
+      const isDarkMode = document.documentElement.classList.contains('dark');
+      const backgroundColor = isDarkMode ? '#1a1a2e' : '#ffffff';
+
       const canvas = await html2canvas(contentRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: getComputedStyle(document.documentElement)
-          .getPropertyValue('--background')
-          .trim() || '#ffffff',
+        backgroundColor: backgroundColor,
+        onclone: (clonedDoc) => {
+          // Convert CSS variables to actual colors for html2canvas compatibility
+          const root = clonedDoc.documentElement;
+          root.style.setProperty('--background', isDarkMode ? '222.2 84% 4.9%' : '0 0% 100%');
+          root.style.setProperty('--foreground', isDarkMode ? '210 40% 98%' : '222.2 84% 4.9%');
+        }
       });
 
       const imgData = canvas.toDataURL("image/png");

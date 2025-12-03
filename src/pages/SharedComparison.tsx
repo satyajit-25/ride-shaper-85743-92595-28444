@@ -51,13 +51,18 @@ const SharedComparison = () => {
 
   const fetchSharedComparison = async () => {
     try {
+      // Fetch only public comparisons - RLS policy handles this
       const { data: comparisonData, error: comparisonError } = await supabase
         .from("comparison_history")
         .select("*")
         .eq("id", id)
+        .eq("is_public", true)
         .single();
 
-      if (comparisonError) throw comparisonError;
+      if (comparisonError) {
+        console.error("Comparison fetch error:", comparisonError);
+        throw new Error("Comparison not found or is private");
+      }
 
       setComparison(comparisonData as unknown as ComparisonData);
 
@@ -73,7 +78,7 @@ const SharedComparison = () => {
       console.error("Error fetching shared comparison:", error);
       toast({
         title: "Error",
-        description: "Failed to load comparison. It may be private or deleted.",
+        description: "This comparison is private or doesn't exist.",
         variant: "destructive",
       });
       navigate("/");
