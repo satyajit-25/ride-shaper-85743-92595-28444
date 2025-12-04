@@ -4,13 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, X, Save, History, Download, Share2, Mail, MessageCircle, Link2, Copy } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { ArrowLeft, X, Save, History, Download, Share2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -139,64 +133,130 @@ const CompareFinancing = () => {
     }
   };
 
-  const exportToPDF = async () => {
-    if (!contentRef.current) return;
+  const generatePDFBlob = async (): Promise<Blob | null> => {
+    if (!contentRef.current) return null;
 
-    setIsExporting(true);
+    // Create a dedicated PDF content element
+    const pdfContent = document.createElement('div');
+    pdfContent.style.width = '1100px';
+    pdfContent.style.padding = '40px';
+    pdfContent.style.backgroundColor = '#ffffff';
+    pdfContent.style.color = '#1a1a2e';
+    pdfContent.style.fontFamily = 'system-ui, -apple-system, sans-serif';
+
+    // Build PDF content manually for better control
+    pdfContent.innerHTML = `
+      <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px;">
+        <h1 style="font-size: 28px; font-weight: bold; margin: 0; color: #1a1a2e;">Car Financing Comparison</h1>
+        <p style="color: #6b7280; margin-top: 8px; font-size: 14px;">Generated on ${new Date().toLocaleDateString()}</p>
+      </div>
+      
+      <div style="display: flex; gap: 20px; margin-bottom: 30px; justify-content: center;">
+        <div style="background: #f3f4f6; padding: 16px 24px; border-radius: 8px; text-align: center;">
+          <p style="color: #6b7280; font-size: 12px; margin: 0;">Down Payment</p>
+          <p style="font-size: 20px; font-weight: bold; margin: 4px 0 0 0; color: #1a1a2e;">${financingParams.downPayment}%</p>
+        </div>
+        <div style="background: #f3f4f6; padding: 16px 24px; border-radius: 8px; text-align: center;">
+          <p style="color: #6b7280; font-size: 12px; margin: 0;">Interest Rate</p>
+          <p style="font-size: 20px; font-weight: bold; margin: 4px 0 0 0; color: #1a1a2e;">${financingParams.interestRate}% p.a.</p>
+        </div>
+        <div style="background: #f3f4f6; padding: 16px 24px; border-radius: 8px; text-align: center;">
+          <p style="color: #6b7280; font-size: 12px; margin: 0;">Loan Tenure</p>
+          <p style="font-size: 20px; font-weight: bold; margin: 4px 0 0 0; color: #1a1a2e;">${financingParams.loanTenure} Years</p>
+        </div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
+        <thead>
+          <tr style="background: #f3f4f6;">
+            <th style="text-align: left; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600;">Car</th>
+            <th style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600;">Price</th>
+            <th style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600;">Down Payment</th>
+            <th style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600;">Loan Amount</th>
+            <th style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600;">Monthly EMI</th>
+            <th style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600;">Total Interest</th>
+            <th style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600;">Total Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${selectedCars.map((car) => {
+            const financing = calculateFinancing(car.price_lakhs);
+            return `
+              <tr>
+                <td style="padding: 12px 16px; border: 1px solid #e5e7eb;">
+                  <div style="font-weight: 600;">${car.name}</div>
+                  <div style="color: #6b7280; font-size: 12px;">${car.brand} • ${car.type} • ${car.fuel_type}</div>
+                </td>
+                <td style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 500;">₹${car.price_lakhs.toFixed(2)}L</td>
+                <td style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb;">₹${financing.downPaymentAmount.toFixed(2)}L</td>
+                <td style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb;">₹${financing.loanAmount.toFixed(2)}L</td>
+                <td style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 600; color: #7c3aed;">₹${financing.emi.toFixed(2)}L</td>
+                <td style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb;">₹${financing.totalInterest.toFixed(2)}L</td>
+                <td style="text-align: right; padding: 12px 16px; border: 1px solid #e5e7eb; font-weight: 700;">₹${financing.totalAmount.toFixed(2)}L</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+
+      <div style="display: grid; grid-template-columns: repeat(${Math.min(selectedCars.length, 3)}, 1fr); gap: 20px;">
+        ${selectedCars.map((car) => {
+          const financing = calculateFinancing(car.price_lakhs);
+          return `
+            <div style="border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden;">
+              <div style="background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); padding: 16px; color: white;">
+                <h3 style="margin: 0; font-size: 16px; font-weight: 600;">${car.name}</h3>
+                <p style="margin: 4px 0 0 0; font-size: 12px; opacity: 0.9;">${car.brand}</p>
+              </div>
+              <div style="padding: 16px;">
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                  <span style="background: #f3e8ff; color: #7c3aed; padding: 4px 8px; border-radius: 4px; font-size: 11px;">${car.type}</span>
+                  <span style="background: #e0f2fe; color: #0284c7; padding: 4px 8px; border-radius: 4px; font-size: 11px;">${car.fuel_type}</span>
+                </div>
+                <div style="background: #f9fafb; padding: 12px; border-radius: 8px; margin-bottom: 12px;">
+                  <p style="margin: 0; color: #6b7280; font-size: 11px;">Car Price</p>
+                  <p style="margin: 4px 0 0 0; font-size: 22px; font-weight: bold; color: #1a1a2e;">₹${car.price_lakhs.toFixed(2)}L</p>
+                </div>
+                <div style="font-size: 13px;">
+                  <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
+                    <span style="color: #6b7280;">Monthly EMI:</span>
+                    <span style="font-weight: 600; color: #7c3aed;">₹${financing.emi.toFixed(2)}L</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6;">
+                    <span style="color: #6b7280;">Total Interest:</span>
+                    <span style="font-weight: 500;">₹${financing.totalInterest.toFixed(2)}L</span>
+                  </div>
+                  <div style="display: flex; justify-content: space-between; padding: 6px 0;">
+                    <span style="font-weight: 500;">Total Amount:</span>
+                    <span style="font-weight: 700; color: #1a1a2e;">₹${financing.totalAmount.toFixed(2)}L</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center; color: #9ca3af; font-size: 11px;">
+        Generated by AI Car Finder • ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}
+      </div>
+    `;
+
+    document.body.appendChild(pdfContent);
+
     try {
-      // Always export in light mode for better readability
-      const backgroundColor = '#ffffff';
-      const textColor = '#1a1a2e';
-
-      const canvas = await html2canvas(contentRef.current, {
+      const canvas = await html2canvas(pdfContent, {
         scale: 2,
         useCORS: true,
         logging: false,
-        backgroundColor: backgroundColor,
-        windowWidth: 1200, // Fixed width for consistent PDF layout
-        onclone: (clonedDoc) => {
-          const root = clonedDoc.documentElement;
-          // Force light mode colors for PDF
-          root.classList.remove('dark');
-          root.style.setProperty('--background', '0 0% 100%');
-          root.style.setProperty('--foreground', '222.2 84% 4.9%');
-          root.style.setProperty('--card', '0 0% 100%');
-          root.style.setProperty('--card-foreground', '222.2 84% 4.9%');
-          root.style.setProperty('--muted', '210 40% 96%');
-          root.style.setProperty('--muted-foreground', '215.4 16.3% 46.9%');
-          root.style.setProperty('--border', '214.3 31.8% 91.4%');
-          
-          // Hide interactive elements in PDF
-          const buttons = clonedDoc.querySelectorAll('button');
-          buttons.forEach(btn => {
-            (btn as HTMLElement).style.display = 'none';
-          });
-          
-          // Hide input fields
-          const inputs = clonedDoc.querySelectorAll('input');
-          inputs.forEach(input => {
-            (input as HTMLElement).style.display = 'none';
-          });
-          
-          // Hide labels for inputs
-          const labels = clonedDoc.querySelectorAll('label');
-          labels.forEach(label => {
-            (label as HTMLElement).style.display = 'none';
-          });
-          
-          // Style the content for print
-          const container = clonedDoc.querySelector('[data-pdf-content]');
-          if (container) {
-            (container as HTMLElement).style.backgroundColor = backgroundColor;
-            (container as HTMLElement).style.color = textColor;
-            (container as HTMLElement).style.padding = '20px';
-          }
-        }
+        backgroundColor: '#ffffff',
       });
+
+      document.body.removeChild(pdfContent);
 
       const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({
-        orientation: "landscape", // Better for comparison tables
+        orientation: "landscape",
         unit: "mm",
         format: "a4",
       });
@@ -206,6 +266,7 @@ const CompareFinancing = () => {
       const margin = 10;
       const imgWidth = pageWidth - (margin * 2);
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
       let heightLeft = imgHeight;
       let position = margin;
 
@@ -219,7 +280,27 @@ const CompareFinancing = () => {
         heightLeft -= (pageHeight - margin * 2);
       }
 
-      pdf.save(`car-comparison-${new Date().getTime()}.pdf`);
+      return pdf.output('blob');
+    } catch (error) {
+      document.body.removeChild(pdfContent);
+      throw error;
+    }
+  };
+
+  const exportToPDF = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await generatePDFBlob();
+      if (!blob) throw new Error('Failed to generate PDF');
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `car-comparison-${new Date().getTime()}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       
       toast({
         title: "Success",
@@ -237,80 +318,52 @@ const CompareFinancing = () => {
     }
   };
 
-  const getShareUrl = async (): Promise<string | null> => {
-    if (!savedComparisonId) {
-      toast({
-        title: "Info",
-        description: "Please save the comparison first to share it",
-      });
-      return null;
-    }
+  const sharePDF = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await generatePDFBlob();
+      if (!blob) throw new Error('Failed to generate PDF');
 
-    // Update the comparison to be publicly accessible
-    const { error: updateError } = await supabase
-      .from("comparison_history")
-      .update({ is_public: true })
-      .eq("id", savedComparisonId);
+      const fileName = `car-comparison-${new Date().getTime()}.pdf`;
+      const file = new File([blob], fileName, { type: 'application/pdf' });
 
-    if (updateError) {
-      toast({
-        title: "Error",
-        description: "Failed to make comparison shareable",
-        variant: "destructive",
-      });
-      return null;
-    }
-
-    return `${window.location.origin}/shared-comparison/${savedComparisonId}`;
-  };
-
-  const shareViaWhatsApp = async () => {
-    const url = await getShareUrl();
-    if (url) {
-      const text = `Check out this car comparison: ${url}`;
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
-    }
-  };
-
-  const shareViaEmail = async () => {
-    const url = await getShareUrl();
-    if (url) {
-      const subject = comparisonName || "Car Financing Comparison";
-      const body = `Hi,\n\nI wanted to share this car comparison with you:\n\n${url}\n\nBest regards`;
-      window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    }
-  };
-
-  const copyShareLink = async () => {
-    const url = await getShareUrl();
-    if (url) {
-      try {
-        await navigator.clipboard.writeText(url);
-        toast({
-          title: "Link copied!",
-          description: "Share link has been copied to clipboard",
-        });
-      } catch (error) {
-        toast({
-          title: "Share Link",
-          description: url,
-        });
-      }
-    }
-  };
-
-  const shareNative = async () => {
-    const url = await getShareUrl();
-    if (url && navigator.share) {
-      try {
+      // Check if native sharing with files is supported
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
         await navigator.share({
-          title: comparisonName || "Car Financing Comparison",
-          text: "Check out this car comparison",
-          url: url,
+          files: [file],
+          title: comparisonName || 'Car Financing Comparison',
         });
-      } catch (error) {
-        // User cancelled or error
+        toast({
+          title: "Success",
+          description: "PDF shared successfully",
+        });
+      } else {
+        // Fallback: download the PDF
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast({
+          title: "PDF Downloaded",
+          description: "Your device doesn't support direct file sharing. PDF has been downloaded instead.",
+        });
       }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error("Error sharing PDF:", error);
+        toast({
+          title: "Error",
+          description: "Failed to share PDF",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -380,34 +433,14 @@ const CompareFinancing = () => {
                 <Download className="w-4 h-4 mr-2" />
                 {isExporting ? "Exporting..." : "Export PDF"}
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" disabled={!savedComparisonId}>
-                    <Share2 className="w-4 h-4 mr-2" />
-                    Share
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem onClick={shareViaWhatsApp} className="cursor-pointer">
-                    <MessageCircle className="w-4 h-4 mr-2 text-green-500" />
-                    WhatsApp
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={shareViaEmail} className="cursor-pointer">
-                    <Mail className="w-4 h-4 mr-2 text-blue-500" />
-                    Email
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={copyShareLink} className="cursor-pointer">
-                    <Copy className="w-4 h-4 mr-2" />
-                    Copy Link
-                  </DropdownMenuItem>
-                  {typeof navigator !== 'undefined' && navigator.share && (
-                    <DropdownMenuItem onClick={shareNative} className="cursor-pointer">
-                      <Link2 className="w-4 h-4 mr-2" />
-                      More Options
-                    </DropdownMenuItem>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                variant="outline"
+                onClick={sharePDF}
+                disabled={isExporting}
+              >
+                <Share2 className="w-4 h-4 mr-2" />
+                {isExporting ? "Sharing..." : "Share PDF"}
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => navigate("/comparison-history")}
