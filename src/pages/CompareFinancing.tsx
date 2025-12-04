@@ -338,7 +338,7 @@ const CompareFinancing = () => {
           description: "PDF shared successfully",
         });
       } else {
-        // Fallback: download the PDF
+        // Fallback: download the PDF first
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -348,9 +348,14 @@ const CompareFinancing = () => {
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
+        // Open email client with instructions
+        const subject = encodeURIComponent(comparisonName || 'Car Financing Comparison');
+        const body = encodeURIComponent('Please find the car financing comparison PDF attached.\n\n(Attach the downloaded PDF file to this email)');
+        window.location.href = `mailto:?subject=${subject}&body=${body}`;
+        
         toast({
           title: "PDF Downloaded",
-          description: "Your device doesn't support direct file sharing. PDF has been downloaded instead.",
+          description: "Email client opened. Please attach the downloaded PDF to share.",
         });
       }
     } catch (error: any) {
