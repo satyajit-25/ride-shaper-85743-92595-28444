@@ -631,7 +631,7 @@ const CompareFinancing = () => {
             </ResponsiveContainer>
           </Card>
 
-          {/* Fuel Type Distribution */}
+          {/* Fuel Type Distribution - Donut Chart */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Fuel Type Distribution</h2>
             <ResponsiveContainer width="100%" height={300}>
@@ -640,11 +640,12 @@ const CompareFinancing = () => {
                   data={fuelTypeData}
                   cx="50%"
                   cy="50%"
-                  labelLine={false}
-                  label={(entry) => `${entry.name}: ${entry.value}`}
-                  outerRadius={80}
-                  fill="hsl(var(--primary))"
+                  innerRadius={50}
+                  outerRadius={90}
+                  paddingAngle={3}
                   dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
                 >
                   {fuelTypeData.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -656,7 +657,22 @@ const CompareFinancing = () => {
                     border: '1px solid hsl(var(--border))',
                     borderRadius: '8px'
                   }}
+                  formatter={(value: number) => [`${value} car(s)`, 'Count']}
                 />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  formatter={(value) => <span style={{ color: 'hsl(var(--foreground))' }}>{value}</span>}
+                />
+                {/* Center label */}
+                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
+                  <tspan x="50%" dy="-0.5em" fontSize="24" fontWeight="bold" fill="hsl(var(--foreground))">
+                    {selectedCars.length}
+                  </tspan>
+                  <tspan x="50%" dy="1.5em" fontSize="12" fill="hsl(var(--muted-foreground))">
+                    Cars
+                  </tspan>
+                </text>
               </PieChart>
             </ResponsiveContainer>
           </Card>
