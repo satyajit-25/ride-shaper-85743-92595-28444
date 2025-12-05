@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -727,11 +728,24 @@ const CompareFinancing = () => {
 
         {/* Comparison Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {selectedCars.map((car) => {
-            const financing = calculateFinancing(car.price_lakhs);
-            
-            return (
-              <Card key={car.id} className="overflow-hidden">
+          <AnimatePresence mode="popLayout">
+            {selectedCars.map((car, index) => {
+              const financing = calculateFinancing(car.price_lakhs);
+              
+              return (
+                <motion.div
+                  key={car.id}
+                  layout
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                  transition={{ 
+                    duration: 0.3, 
+                    delay: index * 0.05,
+                    layout: { duration: 0.3 }
+                  }}
+                >
+                  <Card className="overflow-hidden h-full">
                 <div className="relative">
                   {car.image_url ? (
                     <img
@@ -803,10 +817,12 @@ const CompareFinancing = () => {
                       </span>
                     </div>
                   </div>
-                </div>
-              </Card>
+                  </div>
+                </Card>
+              </motion.div>
             );
           })}
+          </AnimatePresence>
         </div>
 
         {/* Summary Card */}
