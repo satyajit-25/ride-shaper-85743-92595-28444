@@ -445,6 +445,30 @@ const CompareFinancing = () => {
 
   const COLORS = ['#8b5cf6', '#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#6366f1'];
 
+  // Animation variants for staggered page load
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+        delayChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        ease: [0.25, 0.46, 0.45, 0.94] as const
+      }
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header - excluded from PDF */}
@@ -506,30 +530,38 @@ const CompareFinancing = () => {
           </p>
         </div>
         
-        <div className="container mx-auto px-4 py-8">
+        <motion.div 
+          className="container mx-auto px-4 py-8"
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+        >
           {/* Save Comparison - hidden in PDF */}
-          <Card className="p-6 mb-6 print:hidden">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <Label htmlFor="comparisonName">Comparison Name (optional)</Label>
-                <Input
-                  id="comparisonName"
-                  placeholder="e.g., Budget SUV comparison"
-                  value={comparisonName}
-                  onChange={(e) => setComparisonName(e.target.value)}
-                />
+          <motion.div variants={itemVariants}>
+            <Card className="p-6 mb-6 print:hidden">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="comparisonName">Comparison Name (optional)</Label>
+                  <Input
+                    id="comparisonName"
+                    placeholder="e.g., Budget SUV comparison"
+                    value={comparisonName}
+                    onChange={(e) => setComparisonName(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-end">
+                  <Button onClick={saveComparison} disabled={isSaving}>
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSaving ? "Saving..." : "Save Comparison"}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-end">
-                <Button onClick={saveComparison} disabled={isSaving}>
-                  <Save className="w-4 h-4 mr-2" />
-                  {isSaving ? "Saving..." : "Save Comparison"}
-                </Button>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </motion.div>
 
           {/* Financing Parameters - Show values only in PDF */}
-          <Card className="p-6 mb-8">
+          <motion.div variants={itemVariants}>
+            <Card className="p-6 mb-8">
             <h2 className="text-xl font-semibold mb-4">Financing Parameters</h2>
             
             {/* Interactive inputs - hidden in PDF */}
@@ -597,9 +629,11 @@ const CompareFinancing = () => {
               </div>
             </div>
           </Card>
+          </motion.div>
 
           {/* Visual Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <motion.div variants={itemVariants}>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Price & EMI Comparison Chart */}
           <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Price & EMI Comparison</h2>
@@ -724,10 +758,12 @@ const CompareFinancing = () => {
               </PieChart>
             </ResponsiveContainer>
           </Card>
-        </div>
+            </div>
+          </motion.div>
 
-        {/* Comparison Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Comparison Grid */}
+          <motion.div variants={itemVariants}>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <AnimatePresence mode="popLayout">
             {selectedCars.map((car, index) => {
               const financing = calculateFinancing(car.price_lakhs);
@@ -823,10 +859,12 @@ const CompareFinancing = () => {
             );
           })}
           </AnimatePresence>
-        </div>
+            </div>
+          </motion.div>
 
-        {/* Summary Card */}
-        <Card className="mt-8 p-6">
+          {/* Summary Card */}
+          <motion.div variants={itemVariants}>
+            <Card className="mt-8 p-6">
           <h2 className="text-xl font-semibold mb-4">Comparison Summary</h2>
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -860,7 +898,8 @@ const CompareFinancing = () => {
             </table>
           </div>
         </Card>
-        </div>
+          </motion.div>
+        </motion.div>
       </div>
     </div>
   );
