@@ -9,7 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector } from "recharts";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -45,7 +45,43 @@ const CompareFinancing = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [savedComparisonId, setSavedComparisonId] = useState<string | null>(null);
+  const [activeDonutIndex, setActiveDonutIndex] = useState<number | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+
+  // Custom active shape for donut chart hover effect
+  const renderActiveShape = (props: any) => {
+    const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, percent } = props;
+    
+    return (
+      <g>
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius - 5}
+          outerRadius={outerRadius + 10}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+          style={{ filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))', transition: 'all 0.3s ease' }}
+        />
+        <Sector
+          cx={cx}
+          cy={cy}
+          innerRadius={innerRadius - 5}
+          outerRadius={innerRadius - 2}
+          startAngle={startAngle}
+          endAngle={endAngle}
+          fill={fill}
+        />
+        <text x={cx} y={cy - 10} textAnchor="middle" fill="hsl(var(--foreground))" fontSize={18} fontWeight="bold">
+          {payload.name}
+        </text>
+        <text x={cx} y={cy + 15} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize={14}>
+          {`${(percent * 100).toFixed(0)}%`}
+        </text>
+      </g>
+    );
+  };
 
   useEffect(() => {
     const cars = location.state?.selectedCars as Car[];
@@ -644,14 +680,20 @@ const CompareFinancing = () => {
                   outerRadius={90}
                   paddingAngle={3}
                   dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  labelLine={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                  activeIndex={activeDonutIndex !== null ? activeDonutIndex : undefined}
+                  activeShape={renderActiveShape}
+                  onMouseEnter={(_, index) => setActiveDonutIndex(index)}
+                  onMouseLeave={() => setActiveDonutIndex(null)}
                   animationBegin={0}
                   animationDuration={800}
                   animationEasing="ease-out"
                 >
                   {fuelTypeData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={COLORS[index % COLORS.length]}
+                      style={{ cursor: 'pointer', transition: 'opacity 0.3s ease' }}
+                    />
                   ))}
                 </Pie>
                 <Tooltip 
@@ -667,15 +709,17 @@ const CompareFinancing = () => {
                   height={36}
                   formatter={(value) => <span style={{ color: 'hsl(var(--foreground))' }}>{value}</span>}
                 />
-                {/* Center label */}
-                <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
-                  <tspan x="50%" dy="-0.5em" fontSize="24" fontWeight="bold" fill="hsl(var(--foreground))">
-                    {selectedCars.length}
-                  </tspan>
-                  <tspan x="50%" dy="1.5em" fontSize="12" fill="hsl(var(--muted-foreground))">
-                    Cars
-                  </tspan>
-                </text>
+                {/* Center label - only show when not hovering */}
+                {activeDonutIndex === null && (
+                  <text x="50%" y="50%" textAnchor="middle" dominantBaseline="middle">
+                    <tspan x="50%" dy="-0.5em" fontSize="24" fontWeight="bold" fill="hsl(var(--foreground))">
+                      {selectedCars.length}
+                    </tspan>
+                    <tspan x="50%" dy="1.5em" fontSize="12" fill="hsl(var(--muted-foreground))">
+                      Cars
+                    </tspan>
+                  </text>
+                )}
               </PieChart>
             </ResponsiveContainer>
           </Card>
