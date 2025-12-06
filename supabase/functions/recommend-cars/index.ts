@@ -108,6 +108,43 @@ serve(async (req) => {
       );
     }
 
+    // Step 0: Validate if query is car-related
+    console.log('Validating if query is car-related...');
+    const validationResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-lite',
+        messages: [
+          { 
+            role: 'system', 
+            content: 'You are a query validator. Determine if the user query is related to cars, vehicles, or car buying preferences. Respond with ONLY "valid" or "invalid". A query is valid if it mentions: car types (SUV, sedan, hatchback), car features (mileage, fuel, price, safety, comfort), car brands, budget/price ranges, or any car-related preferences. Greetings like "hi", "hello", random words, or non-car topics are invalid.' 
+          },
+          { role: 'user', content: userQuery }
+        ]
+      }),
+    });
+
+    if (validationResponse.ok) {
+      const validationData = await validationResponse.json();
+      const validationResult = validationData.choices[0].message.content.toLowerCase().trim();
+      console.log('Query validation result:', validationResult);
+      
+      if (validationResult.includes('invalid')) {
+        return new Response(
+          JSON.stringify({ 
+            recommendations: [],
+            conversationId: null,
+            aiResponse: "Please enter a valid car preference or feature. For example, you can ask about:\n• Car types: SUV, sedan, hatchback\n• Budget: \"under 10 lakhs\", \"15-20 lakhs range\"\n• Fuel type: petrol, diesel, electric\n• Features: good mileage, spacious, safety features\n• Or describe your needs: \"family car with good mileage\""
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
     // Step 1: Get all cars from database
     const { data: allCars, error: carsError } = await supabaseClient
       .from('cars')
