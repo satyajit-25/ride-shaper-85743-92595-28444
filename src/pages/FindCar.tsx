@@ -10,7 +10,7 @@ import RecommendationResults from "@/components/RecommendationResults";
 import SearchHistory from "@/components/SearchHistory";
 import ComparisonTable from "@/components/ComparisonTable";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ArrowLeft, Sparkles, LogOut, Heart } from "lucide-react";
+import { ArrowLeft, LogOut, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -100,8 +100,7 @@ const FindCar = () => {
               Back to Home
             </Button>
             
-            <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-2">
-              <Sparkles className="w-6 h-6 text-primary" />
+            <div className="absolute left-1/2 transform -translate-x-1/2">
               <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
                 AI Car Finder
               </h1>
