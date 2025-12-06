@@ -74,7 +74,7 @@ serve(async (req) => {
         }, 'Price must be between 0 and 500 lakhs'),
       carType: z.enum(['SUV', 'Sedan', 'Hatchback', 'MPV', '']).default(''),
       mileagePreference: z.enum(['excellent', 'good', 'average', '']).default(''),
-      conversationId: z.string().optional(),
+      conversationId: z.string().nullable().optional(),
       previousMessages: z.array(z.object({
         role: z.enum(['user', 'assistant']),
         content: z.string()
