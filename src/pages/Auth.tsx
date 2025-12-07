@@ -176,7 +176,7 @@ const Auth = () => {
     try {
       if (isSignUp) {
         const redirectUrl = `${window.location.origin}/home`;
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -189,9 +189,22 @@ const Auth = () => {
 
         if (error) throw error;
 
+        // Check if user already exists (identities will be empty for existing users)
+        if (data.user && data.user.identities && data.user.identities.length === 0) {
+          toast({
+            title: "Account Already Exists",
+            description: "This email is already registered. Please sign in instead.",
+            variant: "destructive",
+          });
+          setIsSignUp(false);
+          setPassword("");
+          setFullName("");
+          return;
+        }
+
         toast({
           title: "Verification Code Sent!",
-          description: "Please check your email for the 6-digit verification code.",
+          description: "Please check your email (including spam folder) for the 6-digit verification code.",
         });
         
         // Store email and show OTP verification screen
