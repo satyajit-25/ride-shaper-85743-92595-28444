@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { HomeSEO } from "@/components/SEO";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -60,9 +59,7 @@ const Index = () => {
   ];
 
   return (
-    <>
-      <HomeSEO />
-      <div className="min-h-screen bg-background text-foreground overflow-hidden">
+    <div className="min-h-screen bg-background text-foreground overflow-hidden">
       {/* Fixed Header Buttons */}
       <div className="fixed top-6 right-6 z-50 flex items-center gap-4">
         <Button
@@ -331,7 +328,6 @@ const Index = () => {
         </div>
       </footer>
     </div>
-    </>
   );
 };
 

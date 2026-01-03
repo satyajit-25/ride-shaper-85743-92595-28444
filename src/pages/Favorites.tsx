@@ -9,7 +9,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useFavorites } from "@/hooks/useFavorites";
 import { useToast } from "@/hooks/use-toast";
-import { FavoritesSEO } from "@/components/SEO";
 
 interface Car {
   id: string;
@@ -94,9 +93,7 @@ const Favorites = () => {
   }
 
   return (
-    <>
-      <FavoritesSEO />
-      <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
@@ -239,7 +236,6 @@ const Favorites = () => {
         )}
       </div>
     </div>
-    </>
   );
 };
 
