@@ -322,7 +322,7 @@ const Index = () => {
 
           <div className="pt-8 border-t border-border text-center">
             <p className="text-muted-foreground">
-              © 2025 Intelligent Car Recommendation System. Powered by AI Technology.
+              © 2026 Intelligent Car Recommendation System. All Rights Reserved.
             </p>
           </div>
         </div>
