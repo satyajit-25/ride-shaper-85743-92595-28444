@@ -314,7 +314,7 @@ const Index = () => {
                 </li>
                 <li className="flex items-center gap-3">
                   <MapPin className="w-5 h-5 text-primary" />
-                  <span>Mumbai, India</span>
+                  <span>Bhubaneswar, India</span>
                 </li>
               </ul>
             </div>
