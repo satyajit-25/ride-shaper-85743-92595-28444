@@ -1,8 +1,12 @@
+# Robots.txt for Intelligent Car Recommendation System
+
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Twitterbot
 Allow: /
@@ -12,3 +16,8 @@ Allow: /
 
 User-agent: *
 Allow: /
+Disallow: /api/
+Disallow: /auth
+
+# Sitemap location
+Sitemap: https://car-recommendation.lovable.app/sitemap.xml

@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { z } from "zod";
+import { AuthSEO } from "@/components/SEO";
 
 const authSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -136,7 +137,9 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
+    <>
+      <AuthSEO />
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-4">
       {/* Theme Toggle */}
       <div className="fixed top-6 right-6 z-50">
         <ThemeToggle />
@@ -311,6 +314,7 @@ const Auth = () => {
         </Card>
       </motion.div>
     </div>
+    </>
   );
 };
 

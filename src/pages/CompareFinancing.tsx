@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, Sector } from "recharts";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import { CompareFinancingSEO } from "@/components/SEO";
 
 interface Car {
   id: string;
@@ -470,7 +471,9 @@ const CompareFinancing = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <CompareFinancingSEO />
+      <div className="min-h-screen bg-background">
       {/* Header - excluded from PDF */}
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10 print:hidden">
         <div className="container mx-auto px-4 py-4">
@@ -902,6 +905,7 @@ const CompareFinancing = () => {
         </motion.div>
       </div>
     </div>
+    </>
   );
 };
 
