@@ -14,6 +14,7 @@ import { ArrowLeft, LogOut, Heart } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { FindCarSEO } from "@/components/SEO";
 
 const FindCar = () => {
   const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -57,7 +58,9 @@ const FindCar = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <>
+      <FindCarSEO />
+      <div className="min-h-screen bg-background text-foreground">
       {/* Animated Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute inset-0 bg-grid-cyan opacity-10"></div>
@@ -245,6 +248,7 @@ const FindCar = () => {
         </div>
       </footer>
     </div>
+    </>
   );
 };
 
