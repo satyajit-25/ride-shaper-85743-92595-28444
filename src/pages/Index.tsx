@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Sparkles, Cpu, Target, Zap, Search, CheckCircle, ArrowRight, Mail, Phone, MapPin, LogOut } from "lucide-react";
+import { Cpu, Target, Zap, Search, CheckCircle, ArrowRight, Mail, Phone, MapPin, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { supabase } from "@/integrations/supabase/client";
@@ -117,7 +117,7 @@ const Index = () => {
             transition={{ delay: 0.2, duration: 0.6 }}
             className="inline-flex items-center gap-2 px-6 py-3 mb-8 rounded-full bg-primary/10 border border-primary/30 backdrop-blur-sm"
           >
-            <Sparkles className="w-5 h-5 text-primary" />
+            <Cpu className="w-5 h-5 text-primary" />
             <span className="text-primary font-medium">AI-Powered Technology</span>
           </motion.div>
 
@@ -160,60 +160,6 @@ const Index = () => {
             </Button>
           </motion.div>
 
-          {/* Animated Car Illustration */}
-          <motion.div
-            initial={{ opacity: 0, y: 100 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1, duration: 1 }}
-            className="mt-20"
-          >
-            <motion.div
-              animate={{
-                y: [0, -20, 0],
-              }}
-              transition={{
-                duration: 3,
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-              className="relative w-full max-w-2xl mx-auto"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 to-blue-500/20 blur-3xl rounded-full"></div>
-              <svg viewBox="0 0 500 200" className="w-full h-auto relative z-10">
-                <defs>
-                  <linearGradient id="carGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#22d3ee" />
-                    <stop offset="100%" stopColor="#3b82f6" />
-                  </linearGradient>
-                </defs>
-                <motion.path
-                  d="M100,120 L120,100 L200,100 L220,80 L280,80 L300,100 L380,100 L400,120 L100,120 Z"
-                  fill="url(#carGradient)"
-                  initial={{ pathLength: 0 }}
-                  animate={{ pathLength: 1 }}
-                  transition={{ duration: 2, delay: 1.2 }}
-                />
-                <circle cx="160" cy="140" r="20" fill="#1e293b" stroke="#22d3ee" strokeWidth="3" />
-                <circle cx="340" cy="140" r="20" fill="#1e293b" stroke="#22d3ee" strokeWidth="3" />
-                <motion.circle
-                  cx="160"
-                  cy="140"
-                  r="15"
-                  fill="#22d3ee"
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-                <motion.circle
-                  cx="340"
-                  cy="140"
-                  r="15"
-                  fill="#22d3ee"
-                  animate={{ opacity: [0.3, 1, 0.3] }}
-                  transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-                />
-              </svg>
-            </motion.div>
-          </motion.div>
         </motion.div>
       </section>
 
