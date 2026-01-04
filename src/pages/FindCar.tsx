@@ -241,7 +241,7 @@ const FindCar = () => {
       {/* Footer */}
       <footer className="relative py-8 px-4 border-t border-border bg-card/50 mt-20">
         <div className="max-w-7xl mx-auto text-center text-muted-foreground">
-          <p>© 2025 Intelligent Car Recommendation System. Powered by AI Technology.</p>
+          <p>© 2026 Intelligent Car Recommendation System. All Rights Reserved.</p>
         </div>
       </footer>
     </div>
